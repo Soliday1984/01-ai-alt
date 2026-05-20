@@ -16,7 +16,7 @@
 
 | 产品 | 状态 | 目标市场 | 核心关键词 | 当前阶段 | 本周目标 | 风险等级 |
 | --- | --- | --- | --- | --- | --- | --- |
-| ImageSEOFix | Active | Shopify/ecommerce SEO | shopify alt text generator | 已推 GitHub，等待 Vercel 安全上线 | 完成生产部署、Spend Management、GSC 准备 | Medium |
+| ImageSEOFix | Active | Shopify/ecommerce SEO | shopify alt text generator | GitHub + Vercel production 已上线 | 手动开启 Spend Management/WAF，提交 GSC | Medium |
 | LLMReadyCheck | Active | AI SEO / technical SEO | llms.txt checker, ai crawler visibility checker | GitHub + Vercel production 已上线 | GSC 提交、Vercel 账单保护、观察收录 | Medium |
 | Shopify Schema Checker | Analysis | Shopify/ecommerce SEO | shopify schema checker, shopify structured data checker | 已判断并入 ImageSEOFix 更优 | ImageSEOFix 安全部署后做 `/shopify-schema-checker` 子页面 | Medium |
 
@@ -35,22 +35,25 @@
 - [x] GitHub 推送到 `Soliday1984/01-ai-alt`
 - [x] 代码层禁用未上线高成本 API 路径
 - [x] 公开页面 middleware 不再每次查 auth session
+- [x] 瘦身模板并升级到 Next.js `16.2.6`：提交 `55791de`
+- [x] Vercel production 部署成功：`https://01-ai-alt.vercel.app`
+- [x] 线上抽检通过：首页、核心工具页、`robots.txt`、`sitemap.xml`、`/api/ping` 404
+- [x] `/api/*`、`/admin/*`、`/dashboard/*`、`/settings/*`、`/auth/*` 代码层返回 404，并带安全响应头：提交 `d2c5977`
 
 ### 进行中
 
-- [ ] Vercel production deployment 成功
 - [ ] Vercel Spend Management 设置低预算与用量告警
 - [ ] Vercel Firewall / WAF 对 `/api/*` 加防刷规则
 - [ ] Deployment Protection 用于非正式推广阶段
 
 ### 待办
 
-- [ ] 设置 `BETTER_AUTH_SECRET`，决定是否暂时关闭 GitHub/Google login
+- [ ] 若未来恢复登录，再设置 `BETTER_AUTH_SECRET` 和 GitHub/Google OAuth
 - [ ] 绑定正式域名
-- [ ] 配置 `NEXT_PUBLIC_BASE_URL`
-- [ ] 检查 `robots.txt` 与 `sitemap.xml`
+- [ ] 绑定正式域名后更新站点 canonical/base URL
+- [x] 检查 `robots.txt` 与 `sitemap.xml`
 - [ ] 提交 Google Search Console
-- [ ] 建 6 个首批 SEO 页面：
+- [x] 建 6 个首批 SEO 页面：
   - `/shopify-alt-text-generator`
   - `/bulk-alt-text-generator`
   - `/shopify-image-seo-checker`
@@ -64,6 +67,7 @@
 ### 风控清单
 
 - [x] 未上线 AI/content/image/storage API 返回 404
+- [x] 代码层 `/api/*` 拦截返回 404，并带 `X-Frame-Options`、`X-Content-Type-Options`、`Referrer-Policy`
 - [ ] Vercel 设置月度硬预算
 - [ ] Vercel 设置 50% / 75% / 100% 用量提醒
 - [ ] `/api/*` 按路径限流或 challenge
