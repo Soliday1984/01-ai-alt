@@ -1,7 +1,6 @@
 import { ImageSeoAuditor } from '@/components/image-seo/image-seo-auditor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { LocaleLink } from '@/i18n/navigation';
 import {
   ArrowRight,
   CheckCircle2,
@@ -59,13 +58,13 @@ export function ImageSeoHome() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg">
-              <LocaleLink href="/#tool">
+              <a href="/#tool">
                 Run free audit
                 <ArrowRight className="size-4" />
-              </LocaleLink>
+              </a>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <LocaleLink href="/pricing">View pricing</LocaleLink>
+              <a href="/#pricing">View pricing</a>
             </Button>
           </div>
           <div className="mt-8 grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">

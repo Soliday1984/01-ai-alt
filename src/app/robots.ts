@@ -1,13 +1,14 @@
 import type { MetadataRoute } from 'next';
-import { getBaseUrl } from '../lib/urls/urls';
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: {
-      userAgent: '*',
-      allow: '/',
-      disallow: ['/api/*', '/_next/*', '/settings/*', '/dashboard/*'],
-    },
-    sitemap: `${getBaseUrl()}/sitemap.xml`,
+    rules: [
+      {
+        userAgent: '*',
+        allow: '/',
+        disallow: ['/api/', '/admin/', '/dashboard/', '/settings/', '/auth/'],
+      },
+    ],
+    sitemap: 'https://01-ai-alt.vercel.app/sitemap.xml',
   };
 }
