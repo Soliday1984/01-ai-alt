@@ -17,8 +17,8 @@
 | 产品 | 状态 | 目标市场 | 核心关键词 | 当前阶段 | 本周目标 | 风险等级 |
 | --- | --- | --- | --- | --- | --- | --- |
 | ImageSEOFix | Active | Shopify/ecommerce SEO | shopify alt text generator | 安全部署与上线准备 | Vercel 防护、部署成功、GSC 准备 | Medium |
-| SaaS #2 | Research | 待定 | 待定 | 需求矩阵筛选 | 选出 5 个候选并打分 | Low |
-| SaaS #3 | Backlog | 待定 | 待定 | 候选池 | 只记录机会，不开发 | Low |
+| LLMReadyCheck | Active | AI SEO / technical SEO | llms.txt checker, ai crawler visibility checker | 第二项目执行 | 静态 MVP、mock audit、安全 fetch API 设计 | Medium |
+| Shopify Schema Checker | Analysis | Shopify/ecommerce SEO | shopify schema checker, product schema checker | 第三项目分析 | 复核 SERP 与是否并入 ImageSEOFix | Medium |
 
 ## ImageSEOFix
 
@@ -82,39 +82,65 @@
 | 转化 | Email / waitlist | 30 天内 >= 5 个有效邮箱 |
 | 付费 | Stripe checkout intent | 60 天内 >= 1 个真实付费或强意向 |
 
-## SaaS #2 验证流水线
+## LLMReadyCheck
 
-目标：不立即开发，先用矩阵选出比 ImageSEOFix 更快验证或能复用模板的数据型/SEO 型工具。
+定位：AI crawler visibility / LLM readiness checker，检查网站是否具备让搜索引擎和 AI agent 清楚理解的技术基础。
 
-### 候选来源
+执行文档：`docs/saas-2-llm-ready-check-execution.md`
 
-- Toolify / Product Hunt / AppSumo / Gumroad 新工具
-- Shopify / WooCommerce / Etsy / Amazon seller 细分需求
-- Google autocomplete + People Also Ask
-- 竞品 pricing 页面和 alternatives 页面
-- `generator` / `checker` / `converter` / `calculator` / `extractor` / `template` 后缀词组合
+### 当前判断
 
-### 打分表
+- 作为第二个活跃产品推进。
+- 不只做 `llms.txt generator`，而是覆盖 `robots.txt`、`sitemap.xml`、`llms.txt`、结构化数据、TDH、canonical、可抓取正文和 AI crawler 规则。
+- 先做静态页面和 mock audit；没有 SSRF 防护、限流、缓存、Spend Management 与 WAF 时，不公开任意 URL 抓取 API。
 
-| 候选 | 关键词 | 搜索意图 | 工具形态 | 付费点 | SERP 风险 | 成本风险 | 优先级 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 待填 | 待填 | 工具页/模板页/对比页 | 待填 | 导出/批量/API/隐私 | Low/Med/High | Low/Med/High | P0/P1/P2 |
+### 首批页面
 
-### 通过标准
+- `/llms-txt-checker`
+- `/llms-txt-generator`
+- `/ai-crawler-visibility-checker`
+- `/robots-txt-ai-crawler-checker`
+- `/ai-seo-audit`
+- `/llms-txt-examples`
 
-- 有明确长尾关键词，不只靠灵感。
-- SERP 前 10 至少有弱页面或可差异化角度。
-- 免费工具可以 3-7 天内做出可用版本。
-- 付费点不是“更好看”，而是批量、导出、私密、自动化或商业使用。
-- 成本可控，默认不依赖昂贵模型实时调用。
+### 本周任务
 
-## SaaS #3 候选池
+- [ ] 确定品牌名、域名候选和 repo 策略
+- [ ] 从模板搭静态 landing + mock audit
+- [ ] 写 audit score 数据结构
+- [ ] 写 SSRF/限流/缓存/超时设计
+- [ ] 开 Vercel Spend Management 后再接真实 URL 抓取
+- [ ] 准备 GSC 提交页面与 sitemap
 
-只记录，不开发。除非 SaaS #2 被淘汰，或 ImageSEOFix 已完成上线安全与收录基础。
+### 风控清单
 
-| 机会 | 来源 | 为什么可能值得做 | 暂不做原因 |
-| --- | --- | --- | --- |
-| 待填 | 待填 | 待填 | 当前只允许 2 个活跃方向 |
+- [ ] 只允许 `http`/`https`
+- [ ] 阻止 localhost、内网、保留地址、metadata IP
+- [ ] A/AAAA 解析后必须是公网 IP
+- [ ] 跳转后重新校验目标
+- [ ] 响应体上限 1 MB
+- [ ] 请求总超时 10 秒内
+- [ ] 匿名每天 3 次，URL hash 缓存 24 小时
+- [ ] AI 调用只在登录和预算上限之后开放
+
+## Shopify Schema Checker
+
+定位：第三项目分析线，面向 Shopify/ecommerce SEO 的 Product structured data checker / generator。
+
+分析文档：`docs/saas-3-shopify-schema-checker-analysis.md`
+
+### 当前判断
+
+- 暂不作为活跃开发项目。
+- 与 ImageSEOFix 用户高度相邻，更可能先作为 ImageSEOFix 的子页面或付费功能。
+- 泛 schema validator 竞争强，差异化必须是 Shopify-specific、bulk audit、Liquid/theme 修复片段和 agency 报告。
+
+### 后续分析任务
+
+- [ ] 复核 `shopify schema checker`、`shopify structured data checker`、`product schema checker` 的 SERP 前 10
+- [ ] 查 3-5 个竞品的流量来源和 pricing
+- [ ] 看 Shopify app store 中 schema/SEO app 差评，提炼真实痛点
+- [ ] 判断独立站、ImageSEOFix 子页面或 Growth/Agency 功能三选一
 
 ## 每周复盘模板
 
@@ -123,7 +149,8 @@
 | 产品 | 本周动作 | 指标变化 | 学到什么 | 下周动作 | 决策 |
 | --- | --- | --- | --- | --- | --- |
 | ImageSEOFix | 待填 | 待填 | 待填 | 待填 | 继续/暂停/加码 |
-| SaaS #2 | 待填 | 待填 | 待填 | 待填 | 继续/暂停/加码 |
+| LLMReadyCheck | 待填 | 待填 | 待填 | 待填 | 继续/暂停/加码 |
+| Shopify Schema Checker | 待填 | 待填 | 待填 | 待填 | 继续分析/暂停/转入开发 |
 
 ## 权限与工具需求
 
@@ -134,6 +161,23 @@
 - Cloudflare：DNS、域名、WAF、缓存、Turnstile、R2。项目级 MCP 已配置：
   - `cloudflare-docs` -> `https://docs.mcp.cloudflare.com/mcp`
   - `cloudflare-api` -> `https://mcp.cloudflare.com/mcp`
+
+## 接入能力任务
+
+目标：把持续构建所需的权限接入成稳定能力，但不把密钥写入仓库、聊天或长期明文配置。
+
+| 能力 | 当前状态 | 下一步 | 风险控制 | 优先级 |
+| --- | --- | --- | --- | --- |
+| GitHub connector | 已安装插件，项目 MCP 已配置 | 重启客户端后完成 OAuth；验证能读 `Soliday1984/01-ai-alt`、Actions、issues、PR | 不再使用 PAT；只用 OAuth/connector | P0 |
+| Vercel MCP | 项目 MCP 已配置，CLI 已登录 `soliday1984` | 重启客户端后 OAuth；确认能读 deployment logs、project settings、env vars、domains | 只授权当前项目；先配置 Spend Management 与 Firewall | P0 |
+| Cloudflare docs MCP | 已配置 | 重启客户端后验证能查 docs | 只读文档，无账号风险 | P1 |
+| Cloudflare API MCP | 已配置但暂不授权 | 到绑定域名/DNS/WAF 阶段再授权 | 只给单域名 DNS/WAF/Turnstile 最小权限，不给全账号 | P1 |
+| GitHub Actions | 未启用项目 CI | 加 `build`/`typecheck` workflow，push 后自动验证 | 不放 secrets，先只跑静态检查 | P1 |
+| Vercel deployment logs | CLI 可查但不稳定 | MCP 或 dashboard 稳定查看失败原因 | 不在日志里输出 secrets | P0 |
+| Secrets 管理 | 未正式配置 | 建 `.env.production` 清单，不提交真实值 | 所有 secret 只进 Vercel/Cloudflare/GitHub secrets | P0 |
+| 安全账单面板 | 待手动开启 | Vercel Spend Management、usage alerts、WAF `/api/*` 规则 | 先设低预算，再推广 | P0 |
+| 域名/DNS | 未接入 | 选域名后接 Cloudflare DNS | 开启 DNSSEC/WAF 前先确认记录 | P1 |
+| 监控通知 | 未接入 | Vercel usage alert + deployment failure email；后续 Discord/Slack webhook | webhook 不提交到仓库 | P2 |
 
 最低权限原则：
 
