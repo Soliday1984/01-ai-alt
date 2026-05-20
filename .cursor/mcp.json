@@ -9,6 +9,18 @@
     "context7": {
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp@latest"]
+    },
+    "github": {
+      "url": "https://api.githubcopilot.com/mcp/"
+    },
+    "vercel": {
+      "url": "https://mcp.vercel.com"
+    },
+    "cloudflare-docs": {
+      "url": "https://docs.mcp.cloudflare.com/mcp"
+    },
+    "cloudflare-api": {
+      "url": "https://mcp.cloudflare.com/mcp"
     }
   }
 }

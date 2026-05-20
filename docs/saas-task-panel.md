@@ -129,9 +129,11 @@
 
 高优先级：
 
-- GitHub：查看 repo、issues、actions、提交状态、创建 PR。
-- Vercel：查看 deployment、build logs、env vars、domains、Firewall、Spend Management。
-- Cloudflare：DNS、域名、WAF、缓存、Turnstile、R2。
+- GitHub：查看 repo、issues、actions、提交状态、创建 PR。项目级 MCP 已配置：`github` -> `https://api.githubcopilot.com/mcp/`。
+- Vercel：查看 deployment、build logs、env vars、domains、Firewall、Spend Management。项目级 MCP 已配置：`vercel` -> `https://mcp.vercel.com`。
+- Cloudflare：DNS、域名、WAF、缓存、Turnstile、R2。项目级 MCP 已配置：
+  - `cloudflare-docs` -> `https://docs.mcp.cloudflare.com/mcp`
+  - `cloudflare-api` -> `https://mcp.cloudflare.com/mcp`
 
 最低权限原则：
 
@@ -139,3 +141,4 @@
 - 优先 OAuth / official CLI login / scoped connector。
 - GitHub token 只给 repo 级细权限；Vercel 只给项目级；Cloudflare 只给单域名 DNS/WAF 权限。
 - 任何密钥泄露后立即 revoke 并轮换。
+- Cloudflare API MCP 权限很强，只有到“绑定域名、DNS、WAF、Turnstile、R2”阶段再授权；授权时优先选择单域名和最小权限。
