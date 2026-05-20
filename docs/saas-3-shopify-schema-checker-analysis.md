@@ -4,95 +4,172 @@
 
 ## 结论
 
-Shopify Product Schema Checker 值得放入第三项目候选池，但暂不单独开发。它更适合作为 ImageSEOFix 的 ecommerce SEO 扩展方向，等 ImageSEOFix 有收录、点击或 Shopify 用户反馈后再决定是否独立成站。
+Shopify Schema Checker 有需求，但现在不建议单独开第三个 repo。
 
-## 定位
+推荐路线：先把它做成 ImageSEOFix 的扩展页面/子工具，定位为 **Shopify Product SEO + AI Commerce Readiness Checker**。先用一页可抓取 SEO 页面和客户端 JSON-LD 检查器验证搜索流量，不开放任意 URL 抓取 API。
 
-面向 Shopify 店主、SEO freelancer、agency 的 Product structured data checker / generator。
+原因：
 
-核心任务：用户粘贴产品页 URL 或 JSON-LD，工具检查 `Product`、`Offer`、`AggregateRating`、shipping、availability、return policy 等结构化数据是否完整，并输出可操作修复建议。
+- 用户群和 ImageSEOFix 高度重叠：Shopify 店主、SEO freelancer、agency。
+- 泛 `product schema checker` 已经被 Google、Schema.org、SEO 工具和若干免费 checker 覆盖。
+- `shopify schema checker` 更细分，但 SERP 已出现直接工具和 Shopify app 类结果，需要差异化。
+- Shopify 正在把 structured data 和 AI shopping/agentic commerce 绑定起来，这给了新叙事：不只是 rich results，而是让 AI agents 更容易理解商品页。
 
-## 为什么有机会
+## 需求来源
 
-- 与 ImageSEOFix 用户高度相邻，都是 Shopify/ecommerce SEO。
-- Google Search Central 明确说明产品结构化数据可让商品信息以更丰富方式出现在 Google Search、Google Images、Google Lens，并可展示 price、availability、review ratings、shipping、returns 等信息。
-- MVP 成本低，主要是 HTML/JSON-LD 解析和规则校验。
-- 付费边界比普通 validator 更清晰：批量产品检查、历史监控、白标报告、theme/app 修复片段。
-
-来源：
-
-- [Google Search Central: Product structured data](https://developers.google.com/search/docs/appearance/structured-data/product)
-
-## 初始关键词池
-
-| 关键词 | 页面类型 | 搜索意图 | 风险 |
-| --- | --- | --- | --- |
-| `shopify schema checker` | 工具页 | 检查 Shopify 商品结构化数据 | 需要 SERP 复核 |
-| `product schema checker` | 工具页 | 通用 Product schema 验证 | Google/validator 竞争强 |
-| `shopify structured data checker` | 工具页 | Shopify 结构化数据检查 | 适合细分 |
-| `product schema generator` | 工具页 | 生成 Product JSON-LD | 容易变成一次性免费工具 |
-| `ecommerce schema markup generator` | 功能页/教程页 | 电商 schema 生成 | 宽词，难度更高 |
-
-## 搜索意图拆解
-
-| 页面 | 目标用户 | 交付结果 |
+| 来源 | 观察 | 判断 |
 | --- | --- | --- |
-| `/shopify-schema-checker` | Shopify 店主 | 输入 URL，输出缺失字段和修复建议 |
-| `/product-schema-checker` | SEO 从业者 | 粘贴 JSON-LD，检测 Product/Offer 必填和推荐字段 |
-| `/shopify-product-schema-generator` | 店主/开发者 | 生成基础 JSON-LD 片段 |
-| `/product-rich-results-checklist` | 内容 SEO | 上线前检查清单 |
-| `/shopify-schema-bulk-audit` | agency | 批量检查产品 URL，导出 CSV |
+| Google Product structured data | Google 文档强调产品结构化数据会影响商品在 Search、Images、Lens、merchant listings 等场景的丰富展示，包括 price、availability、ratings、shipping、returns 等信息 | 需求真实，用户有明确 SEO/merchant listing 动机 |
+| Shopify Agentic Commerce Readiness | Shopify 官方已经推出面向 AI shopping/agentic commerce 的 readiness scanner，包含 structured product data 等检查 | 方向正在被官方教育，但官方免费工具会压制泛 checker |
+| SERP: `shopify schema checker` | 出现 Shopify-specific checker、schema app、structured data app、AI readiness 类页面 | 有可做空间，但必须做 Shopify-specific 和 actionable fix |
+| SERP: `product schema checker` | 通用 schema validator、Google/Schema.org 文档、SEO 工具更强 | 不适合作为主攻关键词 |
+| Shopify app ecosystem | structured data / JSON-LD app 多，说明商家愿意为“修好 schema”付费 | 独立站要避开直接 app 竞争，先做免费诊断和 lead capture |
 
-## MVP 草案
+## 关键词判断
 
-免费版本：
+没有接入 Semrush/Ahrefs 前，先用 SERP 结构和商业意图做定性评分。
 
-- 粘贴 Shopify 产品页 URL 或 JSON-LD。
-- 抽取页面中的 `application/ld+json`。
-- 识别 `Product`、`Offer`、`AggregateRating`、`Review`、`BreadcrumbList`。
-- 检查商品名、图片、描述、价格、币种、availability、SKU/GTIN/MPN、brand、review、shipping、return policy。
-- 输出缺失字段、警告、可复制 JSON-LD 示例。
+| 关键词 | 搜索意图 | 可交付结果 | SERP 风险 | 推荐 |
+| --- | --- | --- | --- | --- |
+| `shopify schema checker` | 店主想检查 Shopify 商品页 schema | URL/JSON-LD 检查、缺失字段、修复建议 | 中 | 主攻页 |
+| `shopify structured data checker` | 检查 Shopify structured data 是否正确 | Product/Offer/Review/Breadcrumb 检查 | 中 | 主攻长尾 |
+| `shopify product schema checker` | 检查产品页 Product schema | 商品页规则检查 | 中 | 主攻长尾 |
+| `product schema checker` | 通用 Product schema 验证 | 粘贴 JSON-LD 后检测字段 | 高 | 只做辅助页 |
+| `shopify ai commerce readiness checker` | 检查 AI shopping/agentic commerce readiness | schema + product content + crawlability | 中高，但新 | 可作为差异化标题 |
+| `shopify schema generator` | 生成 JSON-LD/Liquid 片段 | 复制代码片段 | 中 | 后续页 |
 
-付费版本：
+## 推荐定位
 
-- 批量抓取 100-1000 个产品页。
-- 每周自动监控结构化数据变化。
-- CSV/PDF/白标报告。
-- Shopify theme snippet 建议。
-- Agency client workspace。
+不要叫泛泛的 `Product Schema Checker`。
 
-## 差异化角度
+推荐命名：
 
-不要做泛泛的 schema validator，因为 Google Rich Results Test、Schema.org validator 和大量 SEO 工具已经很强。
+**Shopify AI Commerce Schema Checker**
 
-可差异化方向：
+一句话定位：
 
-- Shopify-specific：识别 Shopify theme 常见问题、重复 schema、app 冲突、variant 丢失。
-- Bulk-first：从 sitemap 或 CSV 批量检查产品页。
+> Check whether your Shopify product pages have clean Product structured data, rich-result fields, and AI-commerce-ready product signals.
+
+核心差异化：
+
+- Shopify-specific：识别 Shopify theme、variant、app conflict、重复 JSON-LD。
+- AI commerce narrative：把 schema、product copy、availability、shipping/returns、crawlability 放到一个 readiness score。
 - Actionable fix：不是只报错，而是给 Liquid/JSON-LD 修复片段。
-- Cross-sell：从 ImageSEOFix 的 image SEO 报告入口推荐 schema audit。
+- Bulk/agency path：用 sitemap/CSV 批量检查产品页，导出报告。
 
-## 风险
+## 页面方案
 
-| 风险 | 判断 |
+先并入 ImageSEOFix，不开第三 repo。
+
+首批页面：
+
+| 页面 | 目标关键词 | 页面目标 |
+| --- | --- | --- |
+| `/shopify-schema-checker` | `shopify schema checker` | 免费 JSON-LD/HTML 粘贴检查器 |
+| `/shopify-structured-data-checker` | `shopify structured data checker` | 解释 Product/Offer/Review/Breadcrumb 字段 |
+| `/shopify-ai-commerce-readiness-checker` | `shopify ai commerce readiness checker` | 用 AI shopping/agentic commerce 叙事做差异化 |
+| `/product-schema-checker` | `product schema checker` | 辅助长尾，不作为首页入口 |
+
+首页/导航策略：
+
+- ImageSEOFix 首页增加 “Product SEO tools” 内链区。
+- 从 alt text 报告结果页引导到 schema checker：图片 SEO 和 Product rich result 都属于商品页 SEO。
+- 不把 schema checker 放到独立品牌，先共享 ImageSEOFix 的 Shopify topical authority。
+
+## MVP 功能
+
+免费版本，全部客户端运行：
+
+- 粘贴 Product JSON-LD 或商品页 HTML。
+- 抽取 `application/ld+json`。
+- 识别 `Product`、`Offer`、`AggregateRating`、`Review`、`BreadcrumbList`。
+- 检查：
+  - `name`
+  - `image`
+  - `description`
+  - `brand`
+  - `sku`
+  - `gtin` / `mpn`
+  - `offers.price`
+  - `offers.priceCurrency`
+  - `offers.availability`
+  - `aggregateRating`
+  - `review`
+  - `shippingDetails`
+  - `hasMerchantReturnPolicy`
+  - duplicate Product schema
+- 输出 readiness score、错误、警告、可复制修复示例。
+
+暂不做：
+
+- 不做服务器端任意 URL 抓取。
+- 不做自动登录 Shopify。
+- 不做自动改 theme。
+- 不接 AI API。
+
+## 付费路径
+
+先不接 Stripe，等 ImageSEOFix 有收录/点击/邮箱后再决定。
+
+| 套餐 | 价格假设 | 付费点 | $1000 MRR 需要 |
+| --- | --- | --- | --- |
+| Growth | $29/mo | 100 个产品页批量检查、CSV 导出、历史记录 | 35 个客户 |
+| Agency | $59/mo | 1000 个产品页、白标报告、客户 workspace | 17 个客户 |
+| One-time Audit | $49/report | 单次店铺报告 | 每月 21 单 |
+
+最现实路径：先作为 ImageSEOFix 的 Growth/Agency 功能，而不是单独卖。
+
+## 风险与控制
+
+| 风险 | 控制 |
 | --- | --- |
-| SERP 强竞争 | 中高，需要进一步查前 10 结果 |
-| 与 ImageSEOFix 重叠 | 中，可能作为功能页比独立站更好 |
-| URL 抓取安全 | 中高，必须复用第二项目的 SSRF/限流/缓存策略 |
-| 规则更新 | 中，需要跟踪 Google 文档变化 |
-| 付费意愿 | 中，agency/bulk 方向更可能付费 |
+| Google/Schema.org/SEO 工具压制通用词 | 主攻 Shopify-specific 和 AI commerce readiness |
+| 官方 Shopify readiness scanner 免费 | 做更细的 Product schema + bulk + fix snippet，不和官方泛扫描正面硬碰 |
+| URL 抓取带来 SSRF/账单风险 | MVP 只粘贴 HTML/JSON-LD；真实 URL 抓取等风控完成后再开 |
+| 规则变化 | 来源以 Google Search Central 和 Shopify docs 为准，定期复核 |
+| 付费意愿不明 | 先作为 ImageSEOFix 内链页面收集搜索/邮箱数据 |
 
-## 推荐决策
+## 推荐下一步
 
-暂不作为第二个活跃产品。它保留为第三项目分析线：
+1. 不创建第三 repo。
+2. ImageSEOFix 安全部署完成后，新增 `/shopify-schema-checker` 页面。
+3. 先做客户端 JSON-LD/HTML 粘贴检查，不开放 URL fetch。
+4. 页面 TDH：
+   - Title: `Shopify Schema Checker - Product Structured Data Audit`
+   - Description: `Check Product, Offer, Review, Breadcrumb, shipping, and return policy structured data for Shopify product pages.`
+   - H1: `Shopify Schema Checker`
+5. 30 天观察：
+   - GSC 是否出现 `shopify schema checker` / `shopify structured data checker` query
+   - 工具使用次数是否 >= 30
+   - 邮箱/导出意向是否 >= 5
+6. 达标后再做批量检查和 Stripe Growth/Agency 套餐。
 
-- 如果 ImageSEOFix 的 Shopify/ecommerce SEO 流量开始出现，把它做成同站第二个工具页。
-- 如果 `shopify schema checker` 相关 SERP 有弱页面、广告、付费工具或 agency 内容，再考虑独立站。
-- 如果用户反馈只想要 “alt text + schema + product SEO audit” 一体化报告，则并入 ImageSEOFix 的 Growth/Agency 套餐。
+## 决策
 
-## 下一步分析任务
+当前决策：**并入 ImageSEOFix，作为第三项目候选功能，不独立开发。**
 
-- 复核 `shopify schema checker`、`shopify structured data checker`、`product schema checker` 的 SERP 前 10。
-- 用 Similarweb/Semrush/Ahrefs 查看 3-5 个竞品流量来源。
-- 找 Shopify app store 中 schema/SEO app 的差评，提炼痛点。
-- 判断它是独立站、ImageSEOFix 子页面，还是后续付费功能。
+转独立站条件：
+
+- `shopify schema checker` 相关页面 30 天内自然点击 >= 50。
+- 至少 5 个用户留下邮箱或要求批量检查。
+- SERP 中出现可被打穿的弱页面，而不是完全由官方/强工具占据。
+- 批量报告或 Liquid fix snippet 有明确付费意向。
+
+暂停条件：
+
+- 30 天没有收录或曝光。
+- 搜索词全部流向 Google/Schema.org/Shopify 官方。
+- 用户只想要一次性免费生成 JSON-LD，没有批量/监控/报告需求。
+
+## 参考来源
+
+- Google Search Central: Product structured data  
+  https://developers.google.com/search/docs/appearance/structured-data/product
+- Shopify Agentic Commerce Readiness  
+  https://www.shopify.com/agentic-readiness
+- Shopify App Store: Schema/structured data apps  
+  https://apps.shopify.com/search?q=schema
+- Schema.org validator  
+  https://validator.schema.org/
+- Google Rich Results Test  
+  https://search.google.com/test/rich-results

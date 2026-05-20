@@ -18,7 +18,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | ImageSEOFix | Active | Shopify/ecommerce SEO | shopify alt text generator | 已推 GitHub，等待 Vercel 安全上线 | 完成生产部署、Spend Management、GSC 准备 | Medium |
 | LLMReadyCheck | Active | AI SEO / technical SEO | llms.txt checker, ai crawler visibility checker | GitHub + Vercel production 已上线 | GSC 提交、Vercel 账单保护、观察收录 | Medium |
-| Shopify Schema Checker | Analysis | Shopify/ecommerce SEO | shopify schema checker, product schema checker | 第三项目分析 | 复核 SERP，判断是否并入 ImageSEOFix | Medium |
+| Shopify Schema Checker | Analysis | Shopify/ecommerce SEO | shopify schema checker, shopify structured data checker | 已判断并入 ImageSEOFix 更优 | ImageSEOFix 安全部署后做 `/shopify-schema-checker` 子页面 | Medium |
 
 ## ImageSEOFix
 
@@ -175,16 +175,20 @@ Repo：`Soliday1984/02-llm-ready-check`
 
 ### 当前判断
 
-- 暂不作为活跃开发项目。
-- 与 ImageSEOFix 用户高度相邻，更可能先作为 ImageSEOFix 的子页面或付费功能。
-- 泛 schema validator 竞争强，差异化必须是 Shopify-specific、bulk audit、Liquid/theme 修复片段和 agency 报告。
+- 暂不作为活跃开发项目，不创建第三 repo。
+- 推荐并入 ImageSEOFix，先做 `/shopify-schema-checker` 子页面和客户端 JSON-LD/HTML 粘贴检查器。
+- 与 ImageSEOFix 用户高度相邻，适合做 Shopify Product SEO 工具矩阵。
+- 泛 `product schema checker` 竞争强，主攻 `shopify schema checker`、`shopify structured data checker` 和 `shopify ai commerce readiness checker`。
+- 差异化必须是 Shopify-specific、AI commerce readiness、bulk audit、Liquid/theme 修复片段和 agency 报告。
 
 ### 后续分析任务
 
-- [ ] 复核 `shopify schema checker`、`shopify structured data checker`、`product schema checker` 的 SERP 前 10
-- [ ] 查 3-5 个竞品的流量来源和 pricing
-- [ ] 看 Shopify app store 中 schema/SEO app 差评，提炼真实痛点
-- [ ] 判断独立站、ImageSEOFix 子页面或 Growth/Agency 功能三选一
+- [x] 复核 `shopify schema checker`、`shopify structured data checker`、`product schema checker` 的 SERP 结构
+- [x] 初步判断独立站、ImageSEOFix 子页面或 Growth/Agency 功能三选一
+- [ ] ImageSEOFix 安全部署后新增 `/shopify-schema-checker` 页面
+- [ ] 先做客户端 JSON-LD/HTML 粘贴检查，不开放 URL fetch
+- [ ] 观察 GSC query、工具使用次数和邮箱/导出意向
+- [ ] 若 30 天自然点击 >= 50 且邮箱/批量需求 >= 5，再考虑独立站或付费功能
 
 ## 接入能力任务
 
