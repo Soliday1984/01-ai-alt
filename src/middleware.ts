@@ -17,6 +17,16 @@ import {
 
 const intlMiddleware = createMiddleware(routing);
 
+const disabledApiPrefixes = [
+  '/api/analyze-content',
+  '/api/chat',
+  '/api/distribute-credits',
+  '/api/generate-images',
+  '/api/search',
+  '/api/storage/upload',
+  '/api/webhooks/stripe',
+];
+
 /**
  * 1. Next.js middleware
  * https://nextjs.org/docs/app/building-your-application/routing/middleware
@@ -29,7 +39,23 @@ const intlMiddleware = createMiddleware(routing);
  */
 export default async function middleware(req: NextRequest) {
   const { nextUrl } = req;
-  console.log('>> middleware start, pathname', nextUrl.pathname);
+
+  if (nextUrl.pathname.startsWith('/api/')) {
+    if (disabledApiPrefixes.some((prefix) => nextUrl.pathname.startsWith(prefix))) {
+      return NextResponse.json(
+        { error: 'This endpoint is disabled for the public MVP.' },
+        {
+          status: 404,
+          headers: {
+            'Cache-Control': 'no-store',
+            'X-Robots-Tag': 'noindex',
+          },
+        }
+      );
+    }
+
+    return NextResponse.next();
+  }
 
   // Handle internal docs link redirection for internationalization
   // Check if this is a docs page without locale prefix
@@ -45,12 +71,25 @@ export default async function middleware(req: NextRequest) {
       LOCALES.includes(preferredLocale)
     ) {
       const localizedPath = `/${preferredLocale}${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
-      console.log(
-        '<< middleware end, redirecting docs link to preferred locale:',
-        localizedPath
-      );
       return NextResponse.redirect(new URL(localizedPath, nextUrl));
     }
+  }
+
+  // Get the pathname of the request (e.g. /zh/dashboard to /dashboard)
+  const pathnameWithoutLocale = getPathnameWithoutLocale(
+    nextUrl.pathname,
+    LOCALES
+  );
+
+  const isProtectedRoute = protectedRoutes.some((route) =>
+    new RegExp(`^${route}$`).test(pathnameWithoutLocale)
+  );
+  const isAuthOnlyForGuestsRoute = routesNotAllowedByLoggedInUsers.some((route) =>
+    new RegExp(`^${route}$`).test(pathnameWithoutLocale)
+  );
+
+  if (!isProtectedRoute && !isAuthOnlyForGuestsRoute) {
+    return intlMiddleware(req);
   }
 
   // do not use getSession() here, it will cause error related to edge runtime
@@ -67,29 +106,10 @@ export default async function middleware(req: NextRequest) {
   const isLoggedIn = !!session;
   // console.log('middleware, isLoggedIn', isLoggedIn);
 
-  // Get the pathname of the request (e.g. /zh/dashboard to /dashboard)
-  const pathnameWithoutLocale = getPathnameWithoutLocale(
-    nextUrl.pathname,
-    LOCALES
-  );
-
   // If the route can not be accessed by logged in users, redirect if the user is logged in
-  if (isLoggedIn) {
-    const isNotAllowedRoute = routesNotAllowedByLoggedInUsers.some((route) =>
-      new RegExp(`^${route}$`).test(pathnameWithoutLocale)
-    );
-    if (isNotAllowedRoute) {
-      console.log(
-        '<< middleware end, not allowed route, already logged in, redirecting to dashboard'
-      );
-      return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));
-    }
+  if (isLoggedIn && isAuthOnlyForGuestsRoute) {
+    return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));
   }
-
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    new RegExp(`^${route}$`).test(pathnameWithoutLocale)
-  );
-  // console.log('middleware, isProtectedRoute', isProtectedRoute);
 
   // If the route is a protected route, redirect to login if user is not logged in
   if (!isLoggedIn && isProtectedRoute) {
@@ -98,17 +118,12 @@ export default async function middleware(req: NextRequest) {
       callbackUrl += nextUrl.search;
     }
     const encodedCallbackUrl = encodeURIComponent(callbackUrl);
-    console.log(
-      '<< middleware end, not logged in, redirecting to login, callbackUrl',
-      callbackUrl
-    );
     return NextResponse.redirect(
       new URL(`/auth/login?callbackUrl=${encodedCallbackUrl}`, nextUrl)
     );
   }
 
   // Apply intlMiddleware for all routes
-  console.log('<< middleware end, applying intlMiddleware');
   return intlMiddleware(req);
 }
 
@@ -130,8 +145,8 @@ export const config = {
   // The `matcher` is relative to the `basePath`
   matcher: [
     // Match all pathnames except for
-    // - if they start with `/api`, `/_next` or `/_vercel`
+    // - if they start with `/_next` or `/_vercel`
     // - if they contain a dot (e.g. `favicon.ico`)
-    '/((?!api|_next|_vercel|.*\\..*).*)',
+    '/((?!_next|_vercel|.*\\..*).*)',
   ],
 };
