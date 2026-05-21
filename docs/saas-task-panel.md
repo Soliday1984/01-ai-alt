@@ -18,7 +18,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | ImageSEOFix | Active | Shopify/ecommerce SEO | shopify alt text generator | GitHub + Vercel production 已上线 | 手动开启 Spend Management/WAF，提交 GSC | Medium |
 | LLMReadyCheck | Active | AI SEO / technical SEO | llms.txt checker, ai crawler visibility checker | GitHub + Vercel production 已上线 | GSC 提交、Vercel 账单保护、观察收录 | Medium |
-| Shopify Schema Checker | Analysis | Shopify/ecommerce SEO | shopify schema checker, shopify structured data checker | 已判断并入 ImageSEOFix 更优 | ImageSEOFix 安全部署后做 `/shopify-schema-checker` 子页面 | Medium |
+| Shopify Schema Checker | Analysis | Shopify/ecommerce SEO | shopify schema checker, shopify structured data checker | 已并入 ImageSEOFix，子页面已开发 | 上线后观察 GSC query、工具使用和邮箱/导出意向 | Medium |
 
 ## ImageSEOFix
 
@@ -39,6 +39,7 @@
 - [x] Vercel production 部署成功：`https://01-ai-alt.vercel.app`
 - [x] 线上抽检通过：首页、核心工具页、`robots.txt`、`sitemap.xml`、`/api/ping` 404
 - [x] `/api/*`、`/admin/*`、`/dashboard/*`、`/settings/*`、`/auth/*` 代码层返回 404，并带安全响应头：提交 `d2c5977`
+- [x] 新增 `/shopify-schema-checker` 子工具页：客户端 JSON-LD/HTML 粘贴检查，不开放 URL fetch
 
 ### 进行中
 
@@ -179,8 +180,8 @@ Repo：`Soliday1984/02-llm-ready-check`
 
 ### 当前判断
 
-- 暂不作为活跃开发项目，不创建第三 repo。
-- 推荐并入 ImageSEOFix，先做 `/shopify-schema-checker` 子页面和客户端 JSON-LD/HTML 粘贴检查器。
+- 不作为独立 repo，作为 ImageSEOFix 子工具进入开发验证。
+- 已并入 ImageSEOFix：`/shopify-schema-checker` 子页面和客户端 JSON-LD/HTML 粘贴检查器。
 - 与 ImageSEOFix 用户高度相邻，适合做 Shopify Product SEO 工具矩阵。
 - 泛 `product schema checker` 竞争强，主攻 `shopify schema checker`、`shopify structured data checker` 和 `shopify ai commerce readiness checker`。
 - 差异化必须是 Shopify-specific、AI commerce readiness、bulk audit、Liquid/theme 修复片段和 agency 报告。
@@ -189,8 +190,9 @@ Repo：`Soliday1984/02-llm-ready-check`
 
 - [x] 复核 `shopify schema checker`、`shopify structured data checker`、`product schema checker` 的 SERP 结构
 - [x] 初步判断独立站、ImageSEOFix 子页面或 Growth/Agency 功能三选一
-- [ ] ImageSEOFix 安全部署后新增 `/shopify-schema-checker` 页面
-- [ ] 先做客户端 JSON-LD/HTML 粘贴检查，不开放 URL fetch
+- [x] ImageSEOFix 安全部署后新增 `/shopify-schema-checker` 页面
+- [x] 先做客户端 JSON-LD/HTML 粘贴检查，不开放 URL fetch
+- [x] 本地 production 构建和抽检通过：首页内链、sitemap、新页面、`/api/ping` 404
 - [ ] 观察 GSC query、工具使用次数和邮箱/导出意向
 - [ ] 若 30 天自然点击 >= 50 且邮箱/批量需求 >= 5，再考虑独立站或付费功能
 

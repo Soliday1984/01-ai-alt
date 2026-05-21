@@ -7,6 +7,7 @@ const routes = [
   '/shopify-alt-text-generator',
   '/bulk-alt-text-generator',
   '/shopify-image-seo-checker',
+  '/shopify-schema-checker',
   '/shopify-alt-text-csv-generator',
   '/ai-alt-text-generator-for-shopify',
   '/woocommerce-alt-text-generator',

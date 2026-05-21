@@ -31,12 +31,19 @@ const workflow = [
 ];
 
 const seoPages = [
-  'Shopify alt text generator',
-  'Bulk alt text generator',
-  'Shopify image SEO checker',
-  'Shopify alt text CSV generator',
-  'AI alt text generator for Shopify',
-  'WooCommerce alt text generator',
+  { title: 'Shopify alt text generator', href: '/shopify-alt-text-generator' },
+  { title: 'Bulk alt text generator', href: '/bulk-alt-text-generator' },
+  { title: 'Shopify image SEO checker', href: '/shopify-image-seo-checker' },
+  { title: 'Shopify schema checker', href: '/shopify-schema-checker' },
+  {
+    title: 'Shopify alt text CSV generator',
+    href: '/shopify-alt-text-csv-generator',
+  },
+  {
+    title: 'AI alt text generator for Shopify',
+    href: '/ai-alt-text-generator-for-shopify',
+  },
+  { title: 'WooCommerce alt text generator', href: '/woocommerce-alt-text-generator' },
 ];
 
 export function ImageSeoHome() {
@@ -152,12 +159,13 @@ export function ImageSeoHome() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {seoPages.map((page) => (
-              <div
-                key={page}
-                className="rounded-lg border bg-background px-4 py-3 text-sm"
+              <a
+                key={page.href}
+                href={page.href}
+                className="rounded-lg border bg-background px-4 py-3 text-sm transition-colors hover:bg-accent"
               >
-                {page}
-              </div>
+                {page.title}
+              </a>
             ))}
           </div>
         </div>
