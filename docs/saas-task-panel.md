@@ -19,6 +19,7 @@
 | ImageSEOFix | Active | Shopify/ecommerce SEO | shopify alt text generator | GitHub + Vercel production 已上线 | 手动开启 Spend Management/WAF，提交 GSC | Medium |
 | LLMReadyCheck | Active | AI SEO / technical SEO | llms.txt checker, ai crawler visibility checker | GitHub + Vercel production 已上线 | GSC 提交、Vercel 账单保护、观察收录 | Medium |
 | Shopify Schema Checker | Analysis | Shopify/ecommerce SEO | shopify schema checker, shopify structured data checker | 已并入 ImageSEOFix，子页面已开发 | 上线后观察 GSC query、工具使用和邮箱/导出意向 | Medium |
+| ExtensionRiskCheck | Candidate | Browser extension security | chrome extension security scanner | 第四项目调研完成，推荐为首选候选 | 等待是否开发；先不创建 repo | Medium |
 
 ## ImageSEOFix
 
@@ -195,6 +196,29 @@ Repo：`Soliday1984/02-llm-ready-check`
 - [x] 本地 production 构建和抽检通过：首页内链、sitemap、新页面、`/api/ping` 404
 - [ ] 观察 GSC query、工具使用次数和邮箱/导出意向
 - [ ] 若 30 天自然点击 >= 50 且邮箱/批量需求 >= 5，再考虑独立站或付费功能
+
+## ExtensionRiskCheck
+
+定位：第四项目候选线，面向开发者、团队管理员、AI 工具重度用户的 Chrome extension permission / security risk checker。
+
+调研文档：`docs/saas-4-opportunity-research.md`
+
+### 当前判断
+
+- 作为第四项目首选候选，但暂不创建 repo。
+- 推荐关键词：`chrome extension security scanner`、`chrome extension permission checker`、`manifest v3 permission checker`。
+- MVP 可以完全客户端运行：粘贴 `manifest.json` 或上传 `.crx/.zip`，输出权限风险分、危险组合、CSP 问题和修复建议。
+- 差异化：不是通用安全大平台，而是轻量、隐私优先、面向独立开发者和小团队的 install risk checklist。
+- 风控边界：不抓 Chrome Web Store，不下载远程扩展，不做 runtime analysis，不上传文件。
+
+### 后续分析任务
+
+- [x] 抓取 Product Hunt、AI 工具目录、竞品页、Reddit/论文信号
+- [x] 产出第四项目候选评分和推荐结论
+- [ ] 用 Semrush/Ahrefs 或替代工具补 `Volume/KD/CPC/kdroi`
+- [ ] 若确认开发，新建 `04-extension-risk-check` repo 或从模板复制
+- [ ] 首版开发 6 个 SEO 页面 + 客户端 manifest checker
+- [ ] 上线后观察 GSC query、工具使用次数和 PDF/CSV 导出意向
 
 ## 接入能力任务
 
