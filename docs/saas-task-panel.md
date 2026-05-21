@@ -19,7 +19,7 @@
 | ImageSEOFix | Active | Shopify/ecommerce SEO | shopify alt text generator | GitHub + Vercel production 已上线 | 手动开启 Spend Management/WAF，提交 GSC | Medium |
 | LLMReadyCheck | Active | AI SEO / technical SEO | llms.txt checker, ai crawler visibility checker | GitHub + Vercel production 已上线 | GSC 提交、Vercel 账单保护、观察收录 | Medium |
 | Shopify Schema Checker | Analysis | Shopify/ecommerce SEO | shopify schema checker, shopify structured data checker | 已并入 ImageSEOFix，子页面已开发 | 上线后观察 GSC query、工具使用和邮箱/导出意向 | Medium |
-| ExtensionRiskCheck | Candidate | Browser extension security | chrome extension security scanner | 本地 MVP 已开发，等待 repo/部署 | 新建 GitHub repo 后推送并安全上线 | Medium |
+| ExtensionRiskCheck | Candidate | Browser extension security | chrome extension security scanner | GitHub + Vercel production 已上线 | 补 GSC、账单保护、观察工具使用和导出意向 | Medium |
 
 ## ImageSEOFix
 
@@ -205,12 +205,15 @@ Repo：`Soliday1984/02-llm-ready-check`
 
 ### 当前判断
 
-- 作为第四项目首选候选，但暂不创建 repo。
+- 作为第四项目首选候选，已完成 MVP 上线。
 - 推荐关键词：`chrome extension security scanner`、`chrome extension permission checker`、`manifest v3 permission checker`。
 - MVP 可以完全客户端运行：粘贴 `manifest.json` 或上传 `.crx/.zip`，输出权限风险分、危险组合、CSP 问题和修复建议。
 - 差异化：不是通用安全大平台，而是轻量、隐私优先、面向独立开发者和小团队的 install risk checklist。
 - 风控边界：不抓 Chrome Web Store，不下载远程扩展，不做 runtime analysis，不上传文件。
 - 本地路径：`E:\AIphaDev-04-extension-risk-check`
+- Repo：`Soliday1984/04-extension-risk-check`
+- 线上地址：`https://extension-risk-check.vercel.app`
+- Vercel production deployment：`dpl_255V33io9qAuC5MRsDhQGEqtc3w6`
 
 ### 后续分析任务
 
@@ -220,8 +223,10 @@ Repo：`Soliday1984/02-llm-ready-check`
 - [x] 若确认开发，新建本地 `E:\AIphaDev-04-extension-risk-check`
 - [x] 首版开发 6 个 SEO 页面 + 客户端 manifest checker
 - [x] 本地 production 构建和抽检通过：首页、核心 SEO 页、`robots.txt`、`sitemap.xml`、`/api/ping` 404
-- [ ] 新建 GitHub repo，例如 `Soliday1984/04-extension-risk-check`
-- [ ] 推送 GitHub 并部署 Vercel production
+- [x] 新建 GitHub repo：`Soliday1984/04-extension-risk-check`
+- [x] 推送 GitHub 并部署 Vercel production
+- [x] 线上抽检通过：首页、核心 SEO 页、`robots.txt`、`sitemap.xml`、`/api/ping` 404
+- [ ] 手动开启 Vercel Spend Management、usage alerts、WAF `/api/*`
 - [ ] 上线后观察 GSC query、工具使用次数和 PDF/CSV 导出意向
 
 ## 接入能力任务
