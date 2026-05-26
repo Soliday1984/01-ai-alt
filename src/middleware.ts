@@ -9,7 +9,7 @@ function applySecurityHeaders(response: NextResponse) {
   return response;
 }
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (blockedPrefixes.some((prefix) => pathname.startsWith(prefix))) {
