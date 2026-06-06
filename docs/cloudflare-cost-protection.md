@@ -9,16 +9,22 @@ ImageSEOFix is low-cost by design:
 - No paid AI API is called on the server.
 - No database, queue, object storage, or email provider is bound to the Worker.
 - `/api/*`, auth, dashboard, admin, and common scanner paths are blocked in middleware.
-- The Worker has low runtime limits in `wrangler.jsonc`.
+- The Worker is currently deployed on Cloudflare Workers Free plan.
 
 The main remaining risk is request volume against the Worker.
 
 ## Code-level controls
 
-Configured in `wrangler.jsonc`:
+Cloudflare rejected `limits.cpu_ms` on the current Free plan. Keep runtime limits out of `wrangler.jsonc` unless the account is upgraded to Workers Paid.
 
-- `limits.cpu_ms: 20`
-- `limits.subrequests: 5`
+If the account moves to Workers Paid, add this optional technical fuse:
+
+```jsonc
+"limits": {
+  "cpu_ms": 20,
+  "subrequests": 5
+}
+```
 
 Configured in `src/middleware.ts`:
 
@@ -43,8 +49,9 @@ Set these before pointing a production custom domain to the Worker.
 
 1. Open Cloudflare Dashboard > Billing.
 2. Check whether the account is on Workers Free or Workers Paid.
-3. Add a low billing notification threshold.
-4. Review Workers usage daily for the first week after launch.
+3. Keep Workers Free while the product is validating, unless a paid feature requires Workers Paid.
+4. Add a low billing notification threshold if billing is enabled on the account.
+5. Review Workers usage daily for the first week after launch.
 
 ### Worker metrics
 
