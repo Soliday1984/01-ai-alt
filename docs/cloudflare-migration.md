@@ -126,6 +126,11 @@ After it succeeds, the first trial URL should be the `workers.dev` route for the
 
 6. Keep the current Vercel production URL live until the Cloudflare trial passes.
 
+7. Apply cost protection:
+   - Keep `limits.cpu_ms` and `limits.subrequests` low.
+   - Review `docs/cloudflare-cost-protection.md`.
+   - Add Cloudflare billing notifications and WAF/rate limiting before custom-domain cutover.
+
 ## Minimum Cloudflare permissions
 
 For a Workers trial deployment:

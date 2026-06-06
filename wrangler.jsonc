@@ -9,6 +9,10 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "limits": {
+    "cpu_ms": 20,
+    "subrequests": 5
+  },
   "observability": {
     "enabled": true
   }

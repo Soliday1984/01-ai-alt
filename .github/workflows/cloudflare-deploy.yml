@@ -76,4 +76,14 @@ jobs:
             echo "Expected /api/ping to return 404, got $API_STATUS" >&2
             exit 1
           fi
+          DOTENV_STATUS="$(curl -sS -o /dev/null -w '%{http_code}' "$URL/.env")"
+          if [ "$DOTENV_STATUS" != "404" ]; then
+            echo "Expected /.env to return 404, got $DOTENV_STATUS" >&2
+            exit 1
+          fi
+          SCANNER_STATUS="$(curl -sS -A 'sqlmap' -o /dev/null -w '%{http_code}' "$URL/")"
+          if [ "$SCANNER_STATUS" != "403" ]; then
+            echo "Expected scanner user-agent to return 403, got $SCANNER_STATUS" >&2
+            exit 1
+          fi
           echo "- Smoke tests: passed" >> "$GITHUB_STEP_SUMMARY"
