@@ -14,6 +14,8 @@ Why this is the right default for this repo:
 
 Cloudflare Pages can still be a later simplification if ImageSEOFix stays fully static and we intentionally replace the request guard.
 
+Compatibility note: the request guard currently uses `src/middleware.ts` instead of the newer Next 16 `src/proxy.ts` convention. Next 16 warns about this, but OpenNext cannot bundle the new Node-based Proxy convention for Cloudflare Workers yet; the legacy middleware convention keeps the guard on the Edge-compatible path.
+
 ## Local configuration
 
 - Wrangler config: `wrangler.jsonc`
