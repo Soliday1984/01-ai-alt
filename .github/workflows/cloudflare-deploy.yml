@@ -1,0 +1,51 @@
+name: Cloudflare Deploy
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: cloudflare-deploy-production
+  cancel-in-progress: false
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  deploy:
+    name: Deploy ImageSEOFix Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Next.js
+        run: pnpm build
+
+      - name: Build Cloudflare Worker bundle
+        run: pnpm cf:build
+
+      - name: Validate Cloudflare deployment
+        run: pnpm exec wrangler deploy --dry-run
+
+      - name: Deploy to Cloudflare Workers
+        run: pnpm exec wrangler deploy

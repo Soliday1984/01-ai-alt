@@ -71,6 +71,27 @@ This workflow does not deploy and does not need Cloudflare secrets. It verifies:
 
 If the workflow passes, the remaining deployment blocker is authentication only. If it fails, inspect the workflow logs before adding a deploy job.
 
+## GitHub Actions deployment
+
+The repository includes `.github/workflows/cloudflare-deploy.yml` for manual production deployment to Cloudflare Workers.
+
+Required GitHub Actions secrets:
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+
+The workflow is intentionally `workflow_dispatch` only, so pushes keep validating the Cloudflare build but do not deploy automatically.
+
+Deployment steps:
+
+- `pnpm install --frozen-lockfile`
+- `pnpm build`
+- `pnpm cf:build`
+- `pnpm exec wrangler deploy --dry-run`
+- `pnpm exec wrangler deploy`
+
+After it succeeds, the first trial URL should be the `workers.dev` route for the `imageseofix` Worker.
+
 ## Deployment checklist
 
 1. Authenticate Wrangler:
