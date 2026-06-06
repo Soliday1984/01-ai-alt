@@ -59,6 +59,18 @@ That is a Windows symlink permission/runtime issue in the OpenNext trace-copy st
 
 Wrangler is also not authenticated in this Codex session. `pnpm cf:whoami` currently reports that `wrangler login` or `CLOUDFLARE_API_TOKEN` is required.
 
+## Linux CI validation
+
+The repository includes `.github/workflows/cloudflare-build.yml` to run the Cloudflare build on `ubuntu-latest`.
+
+This workflow does not deploy and does not need Cloudflare secrets. It verifies:
+
+- `pnpm install --frozen-lockfile`
+- `pnpm build`
+- `pnpm cf:build`
+
+If the workflow passes, the remaining deployment blocker is authentication only. If it fails, inspect the workflow logs before adding a deploy job.
+
 ## Deployment checklist
 
 1. Authenticate Wrangler:
