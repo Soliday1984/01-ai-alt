@@ -48,4 +48,32 @@ jobs:
         run: pnpm exec wrangler deploy --dry-run
 
       - name: Deploy to Cloudflare Workers
-        run: pnpm exec wrangler deploy
+        id: deploy
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm exec wrangler deploy 2>&1 | tee deploy.log
+          DEPLOYMENT_URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' deploy.log | tail -n 1)"
+          if [ -z "$DEPLOYMENT_URL" ]; then
+            echo "Could not find workers.dev URL in deployment output." >&2
+            exit 1
+          fi
+          echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
+          echo "## Cloudflare deployment" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL: $DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke test deployed Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="${{ steps.deploy.outputs.url }}"
+          curl -fsS "$URL/" > /dev/null
+          curl -fsS "$URL/robots.txt" > /dev/null
+          curl -fsS "$URL/sitemap.xml" > /dev/null
+          API_STATUS="$(curl -sS -o /dev/null -w '%{http_code}' "$URL/api/ping")"
+          if [ "$API_STATUS" != "404" ]; then
+            echo "Expected /api/ping to return 404, got $API_STATUS" >&2
+            exit 1
+          fi
+          echo "- Smoke tests: passed" >> "$GITHUB_STEP_SUMMARY"

@@ -89,6 +89,7 @@ Deployment steps:
 - `pnpm cf:build`
 - `pnpm exec wrangler deploy --dry-run`
 - `pnpm exec wrangler deploy`
+- smoke test `/`, `/robots.txt`, `/sitemap.xml`, and `/api/ping`
 
 After it succeeds, the first trial URL should be the `workers.dev` route for the `imageseofix` Worker.
 
