@@ -8,11 +8,11 @@ Updated: 2026-06-07
 - [x] Add pricing intent cards for Free, Private cleanup, Growth, and Agency.
 - [x] Deploy the first lead capture flow to Cloudflare Workers.
 - [x] Wire GitHub Actions to read `NEXT_PUBLIC_LEAD_EMAIL` from repository variables.
-- [ ] Confirm the real lead inbox spelling before setting `NEXT_PUBLIC_LEAD_EMAIL`.
+- [x] Confirm the real lead inbox spelling before setting `NEXT_PUBLIC_LEAD_EMAIL`.
+- [x] Set `NEXT_PUBLIC_LEAD_EMAIL` in GitHub Actions variables.
 
 ## Next engineering tasks
 
-- [ ] Set `NEXT_PUBLIC_LEAD_EMAIL` in GitHub Actions variables after the inbox is confirmed.
 - [ ] Trigger Cloudflare Deploy and verify the generated `mailto:` uses the confirmed inbox.
 - [ ] Add lightweight click tracking for `Generate suggestions`, `Export CSV`, `View pricing`, and `Request private audit`.
 - [ ] Add Google Search Console setup notes and submit sitemap for the canonical production domain.
@@ -26,4 +26,4 @@ Updated: 2026-06-07
 
 ## Waiting on user
 
-- [ ] Confirm whether the lead inbox is `lawxianzhao@gmail.com` or `lawxianzhao@gmial.com`.
+- [x] Confirm the lead inbox spelling.
