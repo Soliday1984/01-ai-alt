@@ -9,11 +9,13 @@ import {
   FileUp,
   Image as ImageIcon,
   Loader2,
+  Mail,
   Sparkles,
+  Store,
   TriangleAlert,
   WandSparkles,
 } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { type FormEvent, useMemo, useRef, useState } from 'react';
 
 type ImageRow = {
   source: string;
@@ -27,6 +29,7 @@ const sampleCsv = `image_url,alt,title
 https://cdn.shopify.com/s/files/linen-shirt-front.jpg,,White Linen Shirt
 https://cdn.shopify.com/s/files/walnut-desk-lamp.png,lamp,Walnut Desk Lamp
 https://cdn.shopify.com/s/files/black-running-shoes-side.jpg,Black running shoes side view,Black Running Shoes`;
+const leadEmail = process.env.NEXT_PUBLIC_LEAD_EMAIL ?? 'hello@imageseofix.com';
 
 function parseCsv(input: string): string[][] {
   const rows: string[][] = [];
@@ -175,10 +178,37 @@ function buildRowsFromCsv(input: string): ImageRow[] {
   );
 }
 
+function buildAuditSummary(rows: ImageRow[]) {
+  const total = rows.length;
+  const affected = rows.filter((row) => row.issues.length > 0).length;
+  const missing = rows.filter((row) =>
+    row.issues.includes('Missing alt text')
+  ).length;
+  const issueSummary = rows
+    .filter((row) => row.issues.length > 0)
+    .slice(0, 5)
+    .map((row) => {
+      const label = row.productTitle || cleanWords(row.source) || 'Untitled image';
+      return `- ${label}: ${row.issues.join(', ')}`;
+    })
+    .join('\n');
+
+  return [
+    `Images audited: ${total}`,
+    `Images with issues: ${affected}`,
+    `Missing alt text: ${missing}`,
+    '',
+    issueSummary ? `Sample issues:\n${issueSummary}` : 'Sample issues: none',
+  ].join('\n');
+}
+
 export function ImageSeoAuditor() {
   const [csv, setCsv] = useState(sampleCsv);
   const [rows, setRows] = useState<ImageRow[]>(() => buildRowsFromCsv(sampleCsv));
   const [isWorking, setIsWorking] = useState(false);
+  const [email, setEmail] = useState('');
+  const [storeUrl, setStoreUrl] = useState('');
+  const [leadStatus, setLeadStatus] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const stats = useMemo(() => {
@@ -240,6 +270,34 @@ export function ImageSeoAuditor() {
     link.download = 'imageseofix-alt-text-audit.csv';
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  function requestPrivateAudit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!email.trim()) {
+      setLeadStatus('Add an email so we can reply with the audit plan.');
+      return;
+    }
+
+    const subject = 'Private Shopify image SEO audit request';
+    const body = [
+      'Hi ImageSEOFix,',
+      '',
+      'I want help fixing product image alt text for my store.',
+      '',
+      `Reply email: ${email.trim()}`,
+      `Store URL: ${storeUrl.trim() || 'Not provided yet'}`,
+      '',
+      buildAuditSummary(rows),
+      '',
+      'Please send the recommended next step and price.',
+    ].join('\n');
+
+    window.location.href = `mailto:${leadEmail}?subject=${encodeURIComponent(
+      subject
+    )}&body=${encodeURIComponent(body)}`;
+    setLeadStatus('Opening your email app with the audit summary included.');
   }
 
   return (
@@ -373,6 +431,65 @@ export function ImageSeoAuditor() {
             collection, edited history, and direct Shopify import/export.
           </p>
         </div>
+
+        <form
+          id="lead"
+          onSubmit={requestPrivateAudit}
+          className="border-border bg-background rounded-lg border p-4"
+        >
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Mail className="size-4 text-primary" />
+            Want us to fix the full store?
+          </div>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Send the current audit summary and get a private batch cleanup quote.
+            Best for stores with 100+ product images or agency client work.
+          </p>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1.5 text-sm font-medium">
+              Work email
+              <input
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="you@store.com"
+                className="border-input bg-background h-10 rounded-md border px-3 text-sm font-normal outline-none transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm font-medium">
+              Store URL
+              <div className="relative">
+                <Store className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2" />
+                <input
+                  value={storeUrl}
+                  onChange={(event) => setStoreUrl(event.target.value)}
+                  type="url"
+                  inputMode="url"
+                  autoComplete="url"
+                  placeholder="https://store.com"
+                  className="border-input bg-background h-10 w-full rounded-md border pl-9 pr-3 text-sm font-normal outline-none transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                />
+              </div>
+            </label>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Button type="submit">
+              <Mail className="size-4" />
+              Request private audit
+            </Button>
+            <p className="text-xs leading-5 text-muted-foreground">
+              No login yet. Your CSV stays in the browser unless you choose to
+              email the summary.
+            </p>
+          </div>
+          {leadStatus ? (
+            <p className="mt-3 text-sm text-muted-foreground">{leadStatus}</p>
+          ) : null}
+        </form>
       </div>
     </section>
   );

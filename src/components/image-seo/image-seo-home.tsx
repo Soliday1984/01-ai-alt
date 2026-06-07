@@ -7,8 +7,11 @@ import {
   FileSpreadsheet,
   Gauge,
   Lock,
+  Mail,
   Search,
   ShoppingBag,
+  Store,
+  Users,
   WandSparkles,
 } from 'lucide-react';
 
@@ -44,6 +47,45 @@ const seoPages = [
     href: '/ai-alt-text-generator-for-shopify',
   },
   { title: 'WooCommerce alt text generator', href: '/woocommerce-alt-text-generator' },
+];
+
+const pricingPlans = [
+  {
+    icon: WandSparkles,
+    name: 'Free audit',
+    price: '$0',
+    body: 'Paste a Shopify CSV, find missing alt text, generate editable suggestions, and export a review file.',
+    cta: 'Run free audit',
+    href: '/#tool',
+    features: ['Browser-only demo', 'CSV paste or upload', 'Editable suggestions'],
+  },
+  {
+    icon: Mail,
+    name: 'Private cleanup',
+    price: '$19+',
+    body: 'Send the audit summary and get a quote for a one-time batch cleanup workflow.',
+    cta: 'Request audit',
+    href: '/#lead',
+    features: ['Best for 100+ images', 'Human review option', 'Shopify-ready CSV'],
+  },
+  {
+    icon: Store,
+    name: 'Growth',
+    price: '$29/mo',
+    body: 'Planned subscription for repeat audits, saved history, and direct Shopify import/export.',
+    cta: 'Join waitlist',
+    href: '/#lead',
+    features: ['Private batch workflow', 'History and exports', 'Collection-aware prompts'],
+  },
+  {
+    icon: Users,
+    name: 'Agency',
+    price: '$79/mo',
+    body: 'Planned client workspace for agencies managing image SEO across multiple stores.',
+    cta: 'Talk to us',
+    href: '/#lead',
+    features: ['Multiple store audits', 'White-label reports', 'Priority cleanup help'],
+  },
 ];
 
 export function ImageSeoHome() {
@@ -181,6 +223,34 @@ export function ImageSeoHome() {
             The $1k MRR path is 35 Growth customers at $29/month, or 17 agency
             customers at $59/month after direct Shopify import is added.
           </p>
+        </div>
+        <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {pricingPlans.map((plan) => (
+            <div
+              key={plan.name}
+              className="rounded-lg border bg-background p-5 shadow-sm"
+            >
+              <plan.icon className="size-5 text-primary" />
+              <div className="mt-4">
+                <h3 className="text-lg font-semibold">{plan.name}</h3>
+                <p className="mt-2 text-3xl font-semibold">{plan.price}</p>
+              </div>
+              <p className="mt-4 min-h-20 text-sm leading-6 text-muted-foreground">
+                {plan.body}
+              </p>
+              <ul className="mt-5 space-y-2 text-sm text-muted-foreground">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex gap-2">
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button asChild className="mt-6 w-full" variant="outline">
+                <a href={plan.href}>{plan.cta}</a>
+              </Button>
+            </div>
+          ))}
         </div>
       </section>
     </div>
