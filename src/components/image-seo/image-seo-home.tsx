@@ -1,4 +1,5 @@
 import { ImageSeoAuditor } from '@/components/image-seo/image-seo-auditor';
+import { TrackedLink } from '@/components/image-seo/tracked-link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -106,13 +107,15 @@ export function ImageSeoHome() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg">
-              <a href="/#tool">
+              <TrackedLink eventName="hero_scan_click" href="/#tool">
                 Scan 5 products free
                 <ArrowRight className="size-4" />
-              </a>
+              </TrackedLink>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <a href="/#pricing">View pricing</a>
+              <TrackedLink eventName="pricing_view" href="/#pricing">
+                View pricing
+              </TrackedLink>
             </Button>
           </div>
           <div className="mt-8 grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">
@@ -247,7 +250,13 @@ export function ImageSeoHome() {
                 ))}
               </ul>
               <Button asChild className="mt-6 w-full" variant="outline">
-                <a href={plan.href}>{plan.cta}</a>
+                <TrackedLink
+                  eventName="pricing_cta_click"
+                  eventPayload={{ plan: plan.name }}
+                  href={plan.href}
+                >
+                  {plan.cta}
+                </TrackedLink>
               </Button>
             </div>
           ))}

@@ -100,4 +100,12 @@ jobs:
               throw new Error('Expected real scan rows');
             }
           " "$SCAN_RESPONSE"
+          EVENT_STATUS="$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H 'content-type: application/json' \
+            -d '{"event":"smoke_test","payload":{"surface":"worker"}}' \
+            "$URL/events")"
+          if [ "$EVENT_STATUS" != "204" ]; then
+            echo "Expected /events to return 204, got $EVENT_STATUS" >&2
+            exit 1
+          fi
           echo "- Smoke tests: passed" >> "$GITHUB_STEP_SUMMARY"

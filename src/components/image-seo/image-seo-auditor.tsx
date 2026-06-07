@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { trackEvent } from '@/lib/analytics';
 import {
   CheckCircle2,
   Download,
@@ -261,7 +262,12 @@ export function ImageSeoAuditor() {
   function runAudit(nextCsv = csv) {
     setIsWorking(true);
     window.setTimeout(() => {
-      setRows(buildRowsFromCsv(nextCsv));
+      const nextRows = buildRowsFromCsv(nextCsv);
+      setRows(nextRows);
+      trackEvent('csv_generate', {
+        imageRows: nextRows.length,
+        issueCount: nextRows.filter((row) => row.issues.length > 0).length,
+      });
       setIsWorking(false);
     }, 180);
   }
@@ -270,12 +276,14 @@ export function ImageSeoAuditor() {
     const normalizedStoreUrl = normalizeStoreUrl(scanStoreUrl);
     if (!normalizedStoreUrl) {
       setScanError('Enter a public Shopify store URL to scan.');
+      trackEvent('store_scan_error', { reason: 'missing_url' });
       return;
     }
 
     setIsWorking(true);
     setScanError('');
     setScannedProducts(0);
+    trackEvent('store_scan_submit', { mode: 'store' });
 
     try {
       const response = await fetch('/store-scan', {
@@ -296,6 +304,10 @@ export function ImageSeoAuditor() {
       );
       setStoreUrl(result.storeUrl ?? normalizedStoreUrl);
       setScannedProducts(result.scannedProducts ?? 0);
+      trackEvent('store_scan_success', {
+        productCount: result.scannedProducts ?? 0,
+        imageRows: result.rows?.length ?? 0,
+      });
     } catch (error) {
       setRows([]);
       setStoreUrl(normalizedStoreUrl);
@@ -304,6 +316,9 @@ export function ImageSeoAuditor() {
           ? error.message
           : 'Unable to scan this store right now.'
       );
+      trackEvent('store_scan_error', {
+        reason: error instanceof Error ? error.message.slice(0, 80) : 'unknown',
+      });
     } finally {
       setIsWorking(false);
     }
@@ -318,12 +333,19 @@ export function ImageSeoAuditor() {
     reader.onload = () => {
       const text = String(reader.result ?? '');
       setCsv(text);
+      trackEvent('csv_upload', { bytes: text.length });
       runAudit(text);
     };
     reader.readAsText(file);
   }
 
   function exportCsv() {
+    trackEvent('csv_export', {
+      mode,
+      imageRows: rows.length,
+      issueCount: rows.filter((row) => row.issues.length > 0).length,
+    });
+
     const output = [
       ['image_url', 'current_alt', 'suggested_alt', 'issues'].join(','),
       ...rows.map((row) =>
@@ -352,8 +374,19 @@ export function ImageSeoAuditor() {
 
     if (!email.trim()) {
       setLeadStatus('Add an email so we can reply with the audit plan.');
+      trackEvent('lead_request_missing_email', {
+        mode,
+        imageRows: rows.length,
+      });
       return;
     }
+
+    trackEvent('lead_request_submit', {
+      mode,
+      imageRows: rows.length,
+      issueCount: rows.filter((row) => row.issues.length > 0).length,
+      productCount: scannedProducts,
+    });
 
     const subject = 'Private Shopify image SEO audit request';
     const body = [

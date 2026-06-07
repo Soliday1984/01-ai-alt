@@ -17,7 +17,7 @@ Updated: 2026-06-07
 - [x] Trigger Cloudflare Deploy and verify the generated `mailto:` uses the confirmed inbox.
 - [x] Replace the demo store scan with a server-side Shopify storefront scanner.
 - [x] Enforce the free scan limit at 5 products on the server.
-- [ ] Add lightweight click tracking for `Generate suggestions`, `Export CSV`, `View pricing`, and `Request private audit`.
+- [x] Add lightweight click tracking for `Generate suggestions`, `Export CSV`, `View pricing`, and `Request private audit`.
 - [ ] Add Google Search Console setup notes and submit sitemap for the canonical production domain.
 - [ ] Decide whether Vercel or Cloudflare is the canonical public URL before promotion.
 
@@ -26,6 +26,7 @@ Updated: 2026-06-07
 - [ ] Write the first outreach offer: private Shopify image SEO cleanup from `$19+`.
 - [ ] Define the first qualified lead criteria: store URL, image count, platform, urgency, and agency/client context.
 - [ ] After 5 qualified requests, replace `mailto:` with a real form backend or Stripe Payment Link.
+- [ ] Review Cloudflare logs weekly for scan, export, pricing, and lead-request events.
 
 ## Waiting on user
 
