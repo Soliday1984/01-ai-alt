@@ -10,10 +10,13 @@ Updated: 2026-06-07
 - [x] Wire GitHub Actions to read `NEXT_PUBLIC_LEAD_EMAIL` from repository variables.
 - [x] Confirm the real lead inbox spelling before setting `NEXT_PUBLIC_LEAD_EMAIL`.
 - [x] Set `NEXT_PUBLIC_LEAD_EMAIL` in GitHub Actions variables.
+- [x] Reframe the default tool workflow around Store URL scan with a 5-product free cap.
 
 ## Next engineering tasks
 
-- [ ] Trigger Cloudflare Deploy and verify the generated `mailto:` uses the confirmed inbox.
+- [x] Trigger Cloudflare Deploy and verify the generated `mailto:` uses the confirmed inbox.
+- [ ] Replace the current demo store scan with a server-side Shopify storefront scanner.
+- [ ] Enforce the free scan limit at 5 products on the server before enabling real crawling.
 - [ ] Add lightweight click tracking for `Generate suggestions`, `Export CSV`, `View pricing`, and `Request private audit`.
 - [ ] Add Google Search Console setup notes and submit sitemap for the canonical production domain.
 - [ ] Decide whether Vercel or Cloudflare is the canonical public URL before promotion.

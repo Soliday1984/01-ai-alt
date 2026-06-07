@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { type FormEvent, useMemo, useRef, useState } from 'react';
 
+type InputMode = 'store' | 'csv';
+
 type ImageRow = {
   source: string;
   currentAlt: string;
@@ -26,10 +28,20 @@ type ImageRow = {
 };
 
 const sampleCsv = `image_url,alt,title
-https://cdn.shopify.com/s/files/linen-shirt-front.jpg,,White Linen Shirt
-https://cdn.shopify.com/s/files/walnut-desk-lamp.png,lamp,Walnut Desk Lamp
-https://cdn.shopify.com/s/files/black-running-shoes-side.jpg,Black running shoes side view,Black Running Shoes`;
+demo-blue-linen-shirt-front.jpg,,Blue Linen Shirt
+demo-walnut-desk-lamp.png,lamp,Walnut Desk Lamp
+demo-ceramic-coffee-mug-main.jpg,photo,Ceramic Coffee Mug
+demo-black-running-shoes-side.jpg,Black running shoes side view,Black Running Shoes
+demo-leather-tote-bag.jpg,,Leather Tote Bag`;
 const leadEmail = process.env.NEXT_PUBLIC_LEAD_EMAIL ?? 'hello@imageseofix.com';
+const freeProductLimit = 5;
+const simulatedStoreProducts = [
+  ['products/blue-linen-shirt', '', 'Blue Linen Shirt'],
+  ['products/walnut-desk-lamp', 'lamp', 'Walnut Desk Lamp'],
+  ['products/ceramic-coffee-mug', 'photo', 'Ceramic Coffee Mug'],
+  ['products/black-running-shoes', 'Black running shoes side view', 'Black Running Shoes'],
+  ['products/leather-tote-bag', '', 'Leather Tote Bag'],
+];
 
 function parseCsv(input: string): string[][] {
   const rows: string[][] = [];
@@ -178,7 +190,25 @@ function buildRowsFromCsv(input: string): ImageRow[] {
   );
 }
 
-function buildAuditSummary(rows: ImageRow[]) {
+function normalizeStoreUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+function buildRowsFromStoreUrl(value: string) {
+  const normalizedStoreUrl = normalizeStoreUrl(value) || 'https://demo-store.myshopify.com';
+  const baseUrl = normalizedStoreUrl.replace(/\/+$/, '');
+
+  return simulatedStoreProducts.map(([path, currentAlt, productTitle]) =>
+    auditRow(`${baseUrl}/${path}`, currentAlt, productTitle)
+  );
+}
+
+function buildAuditSummary(rows: ImageRow[], mode: InputMode, storeUrl: string) {
   const total = rows.length;
   const affected = rows.filter((row) => row.issues.length > 0).length;
   const missing = rows.filter((row) =>
@@ -194,7 +224,10 @@ function buildAuditSummary(rows: ImageRow[]) {
     .join('\n');
 
   return [
+    `Audit mode: ${mode === 'store' ? 'Store URL scan' : 'Shopify CSV'}`,
+    `Store URL: ${storeUrl.trim() || 'Not provided yet'}`,
     `Images audited: ${total}`,
+    `Free product limit: ${freeProductLimit}`,
     `Images with issues: ${affected}`,
     `Missing alt text: ${missing}`,
     '',
@@ -203,11 +236,15 @@ function buildAuditSummary(rows: ImageRow[]) {
 }
 
 export function ImageSeoAuditor() {
+  const [mode, setMode] = useState<InputMode>('store');
+  const [scanStoreUrl, setScanStoreUrl] = useState('https://demo-store.myshopify.com');
   const [csv, setCsv] = useState(sampleCsv);
-  const [rows, setRows] = useState<ImageRow[]>(() => buildRowsFromCsv(sampleCsv));
+  const [rows, setRows] = useState<ImageRow[]>(() =>
+    buildRowsFromStoreUrl('https://demo-store.myshopify.com')
+  );
   const [isWorking, setIsWorking] = useState(false);
   const [email, setEmail] = useState('');
-  const [storeUrl, setStoreUrl] = useState('');
+  const [storeUrl, setStoreUrl] = useState('https://demo-store.myshopify.com');
   const [leadStatus, setLeadStatus] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -232,6 +269,15 @@ export function ImageSeoAuditor() {
       setRows(buildRowsFromCsv(nextCsv));
       setIsWorking(false);
     }, 180);
+  }
+
+  function runStoreScan() {
+    setIsWorking(true);
+    window.setTimeout(() => {
+      setRows(buildRowsFromStoreUrl(scanStoreUrl));
+      setStoreUrl(normalizeStoreUrl(scanStoreUrl));
+      setIsWorking(false);
+    }, 240);
   }
 
   function onFileChange(file?: File) {
@@ -289,7 +335,7 @@ export function ImageSeoAuditor() {
       `Reply email: ${email.trim()}`,
       `Store URL: ${storeUrl.trim() || 'Not provided yet'}`,
       '',
-      buildAuditSummary(rows),
+      buildAuditSummary(rows, mode, storeUrl),
       '',
       'Please send the recommended next step and price.',
     ].join('\n');
@@ -315,35 +361,99 @@ export function ImageSeoAuditor() {
               Free Shopify image SEO checker
             </p>
             <h2 className="text-2xl font-semibold">
-              Audit alt text from a Shopify CSV
+              Scan the first 5 Shopify products free
             </h2>
           </div>
         </div>
 
-        <Textarea
-          value={csv}
-          onChange={(event) => setCsv(event.target.value)}
-          className="min-h-72 resize-y font-mono text-sm"
-          aria-label="CSV input"
-        />
+        <div className="grid grid-cols-2 rounded-lg border bg-muted/30 p-1 text-sm font-medium">
+          <button
+            type="button"
+            onClick={() => setMode('store')}
+            className={`rounded-md px-3 py-2 transition-colors ${
+              mode === 'store' ? 'bg-background shadow-sm' : 'text-muted-foreground'
+            }`}
+          >
+            Store URL
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('csv')}
+            className={`rounded-md px-3 py-2 transition-colors ${
+              mode === 'csv' ? 'bg-background shadow-sm' : 'text-muted-foreground'
+            }`}
+          >
+            CSV fallback
+          </button>
+        </div>
+
+        {mode === 'store' ? (
+          <div className="space-y-4">
+            <label className="grid gap-2 text-sm font-medium">
+              Shopify store URL
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  value={scanStoreUrl}
+                  onChange={(event) => setScanStoreUrl(event.target.value)}
+                  type="url"
+                  inputMode="url"
+                  placeholder="https://your-store.com"
+                  className="border-input bg-background h-11 min-w-0 flex-1 rounded-md border px-3 text-sm font-normal outline-none transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                />
+                <Button type="button" size="lg" onClick={runStoreScan} disabled={isWorking}>
+                  {isWorking ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <WandSparkles className="size-4" />
+                  )}
+                  Scan 5 products
+                </Button>
+              </div>
+            </label>
+            <div className="rounded-lg border bg-muted/30 p-4 text-sm leading-6 text-muted-foreground">
+              Free scans are capped at the first {freeProductLimit} products to
+              keep the service fast and low-cost. Larger stores unlock more
+              products with Growth or Agency plans. This MVP shows the scan flow
+              with demo storefront data before server-side crawling is enabled.
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <Textarea
+              value={csv}
+              onChange={(event) => setCsv(event.target.value)}
+              className="min-h-72 resize-y font-mono text-sm"
+              aria-label="CSV input"
+            />
+            <p className="text-sm leading-6 text-muted-foreground">
+              Paste Shopify product export columns like image_url, alt, and
+              title. Demo rows use filenames, not fake CDN links. The browser-only
+              MVP does not fetch or upload images.
+            </p>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-3">
-          <Button onClick={() => runAudit()} disabled={isWorking}>
-            {isWorking ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <WandSparkles className="size-4" />
-            )}
-            Generate suggestions
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <FileUp className="size-4" />
-            Upload CSV
-          </Button>
+          {mode === 'csv' ? (
+            <>
+              <Button onClick={() => runAudit()} disabled={isWorking}>
+                {isWorking ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <WandSparkles className="size-4" />
+                )}
+                Generate suggestions
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <FileUp className="size-4" />
+                Upload CSV
+              </Button>
+            </>
+          ) : null}
           <Button
             type="button"
             variant="outline"
@@ -361,12 +471,6 @@ export function ImageSeoAuditor() {
             onChange={(event) => onFileChange(event.target.files?.[0])}
           />
         </div>
-
-        <p className="text-sm leading-6 text-muted-foreground">
-          Paste Shopify product image data with columns like image_url, alt, and
-          title. The browser-only MVP highlights missing, short, long, or generic
-          alt text and creates Shopify-ready suggestions without uploading data.
-        </p>
       </div>
 
       <div className="space-y-5">
@@ -380,14 +484,14 @@ export function ImageSeoAuditor() {
             <p className="mt-2 text-3xl font-semibold">{stats.affected}</p>
           </div>
           <div className="border-border bg-muted/30 rounded-lg border p-4">
-            <p className="text-sm text-muted-foreground">Score</p>
-            <p className="mt-2 text-3xl font-semibold">{stats.score}</p>
+            <p className="text-sm text-muted-foreground">Free cap</p>
+            <p className="mt-2 text-3xl font-semibold">{freeProductLimit}</p>
           </div>
         </div>
 
         <div className="border-border overflow-hidden rounded-lg border">
           <div className="bg-muted/40 grid grid-cols-[1fr_1fr_1fr] gap-3 border-b px-4 py-3 text-sm font-medium">
-            <span>Image</span>
+            <span>Product / image row</span>
             <span>Suggested alt</span>
             <span>Status</span>
           </div>
@@ -427,8 +531,9 @@ export function ImageSeoAuditor() {
             Upgrade path
           </div>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Paid plans will add private batch processing, better AI prompts by
-            collection, edited history, and direct Shopify import/export.
+            Free scans show the first {freeProductLimit} products. Growth unlocks
+            up to 100 products per scan, while Agency is for multi-store cleanup
+            and human-reviewed CSV delivery.
           </p>
         </div>
 

@@ -6,7 +6,8 @@ Updated: 2026-06-07
 
 The first conversion path is intentionally lightweight:
 
-- Users run the free CSV audit in the browser.
+- Users run the free store sample audit in the browser.
+- The default product experience is moving toward store URL scanning, with the free tier capped at the first 5 products.
 - Pricing cards explain the free and paid boundary.
 - The lead form opens an email draft with the current audit summary.
 - No database, login, third-party form provider, or paid API is required.
@@ -43,9 +44,10 @@ Confirm the inbox spelling before setting it. A common mistake is typing `gmial.
 
 Use this as the first paid intent:
 
-- Private Shopify image SEO cleanup: `$19+`
-- Growth plan waitlist: `$29/mo`
-- Agency plan waitlist: `$79/mo`
+- Free store URL scan: first 5 products.
+- Private Shopify image SEO cleanup: `$19+`.
+- Growth plan waitlist: `$29/mo`, planned for up to 100 products per scan.
+- Agency plan waitlist: `$79/mo`, planned for multi-store audits and cleanup.
 
 The immediate goal is not automated checkout. The immediate goal is to learn:
 

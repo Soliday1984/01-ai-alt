@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import {
   ArrowRight,
   CheckCircle2,
-  FileSpreadsheet,
   Gauge,
   Lock,
   Mail,
@@ -17,9 +16,9 @@ import {
 
 const workflow = [
   {
-    icon: FileSpreadsheet,
-    title: 'Import Shopify CSV',
-    body: 'Paste product export rows or upload a CSV with image URL, current alt text, and product title.',
+    icon: Store,
+    title: 'Enter a Shopify store URL',
+    body: 'Start with the first 5 products for free, so merchants can see image SEO gaps without preparing a file.',
   },
   {
     icon: Gauge,
@@ -28,8 +27,8 @@ const workflow = [
   },
   {
     icon: WandSparkles,
-    title: 'Generate editable alt text',
-    body: 'Create descriptive product-aware suggestions, then export a clean CSV for your team or store workflow.',
+    title: 'Upgrade when the store is larger',
+    body: 'Growth and Agency tiers expand scan volume, exports, cleanup support, and multi-store workflows.',
   },
 ];
 
@@ -54,10 +53,10 @@ const pricingPlans = [
     icon: WandSparkles,
     name: 'Free audit',
     price: '$0',
-    body: 'Paste a Shopify CSV, find missing alt text, generate editable suggestions, and export a review file.',
-    cta: 'Run free audit',
+    body: 'Scan the first 5 products, find missing alt text, generate editable suggestions, and export a review file.',
+    cta: 'Scan 5 products',
     href: '/#tool',
-    features: ['Browser-only demo', 'CSV paste or upload', 'Editable suggestions'],
+    features: ['5 products per scan', 'Store URL or CSV fallback', 'Editable suggestions'],
   },
   {
     icon: Mail,
@@ -72,19 +71,19 @@ const pricingPlans = [
     icon: Store,
     name: 'Growth',
     price: '$29/mo',
-    body: 'Planned subscription for repeat audits, saved history, and direct Shopify import/export.',
+    body: 'Planned subscription for stores that need larger scans, saved history, and direct import/export.',
     cta: 'Join waitlist',
     href: '/#lead',
-    features: ['Private batch workflow', 'History and exports', 'Collection-aware prompts'],
+    features: ['Up to 100 products per scan', 'History and exports', 'Collection-aware prompts'],
   },
   {
     icon: Users,
     name: 'Agency',
     price: '$79/mo',
-    body: 'Planned client workspace for agencies managing image SEO across multiple stores.',
+    body: 'Planned client workspace for agencies managing image SEO cleanup across multiple stores.',
     cta: 'Talk to us',
     href: '/#lead',
-    features: ['Multiple store audits', 'White-label reports', 'Priority cleanup help'],
+    features: ['Multi-store audits', 'White-label reports', 'Priority cleanup help'],
   },
 ];
 
@@ -98,17 +97,17 @@ export function ImageSeoHome() {
             Built for Shopify merchants and SEO agencies
           </Badge>
           <h1 className="max-w-3xl text-4xl font-semibold tracking-normal md:text-6xl">
-            Shopify alt text generator for product image SEO
+            Shopify image SEO scanner with 5 products free
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-            ImageSEOFix audits missing alt text, writes product-aware
-            suggestions, and exports a Shopify-ready CSV so ecommerce teams can
-            improve image SEO without opening every product one by one.
+            ImageSEOFix scans a Shopify store sample, flags weak product image
+            alt text, writes product-aware suggestions, and shows when a larger
+            paid cleanup workflow is worth it.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg">
               <a href="/#tool">
-                Run free audit
+                Scan 5 products free
                 <ArrowRight className="size-4" />
               </a>
             </Button>
@@ -119,11 +118,11 @@ export function ImageSeoHome() {
           <div className="mt-8 grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="size-4 text-primary" />
-              CSV-first MVP
+              5-product free scan
             </div>
             <div className="flex items-center gap-2">
               <Lock className="size-4 text-primary" />
-              Browser-only demo
+              Low-cost trial
             </div>
             <div className="flex items-center gap-2">
               <Search className="size-4 text-primary" />
@@ -167,8 +166,8 @@ export function ImageSeoHome() {
           </h2>
           <p className="mt-4 text-muted-foreground">
             The first release is intentionally narrow: solve one painful store
-            maintenance job, create useful SEO content around it, and charge for
-            private batch workflows once demand is proven.
+            maintenance job, show value on a small free sample, and charge for
+            larger scans or private cleanup once demand is proven.
           </p>
         </div>
         <div className="mt-10 grid gap-4 md:grid-cols-3">
@@ -220,8 +219,9 @@ export function ImageSeoHome() {
             Free audit, paid batch workflow
           </h2>
           <p className="mt-4 text-muted-foreground">
-            The $1k MRR path is 35 Growth customers at $29/month, or 17 agency
-            customers at $59/month after direct Shopify import is added.
+            The free tier proves the issue on 5 products. The $1k MRR path is
+            35 Growth customers at $29/month, or 13 Agency customers at
+            $79/month after larger scans are enabled.
           </p>
         </div>
         <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
