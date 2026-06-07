@@ -21,6 +21,14 @@ Set a real public reply inbox before promoting the page:
 NEXT_PUBLIC_LEAD_EMAIL=you@example.com
 ```
 
+For GitHub Actions deployments, set this as a repository variable:
+
+```text
+Settings > Secrets and variables > Actions > Variables > New repository variable
+Name: NEXT_PUBLIC_LEAD_EMAIL
+Value: <real inbox>
+```
+
 If the variable is not set, the app falls back to:
 
 ```text
@@ -28,6 +36,8 @@ hello@imageseofix.com
 ```
 
 Only use the fallback after that mailbox exists.
+
+Confirm the inbox spelling before setting it. A common mistake is typing `gmial.com` instead of `gmail.com`.
 
 ## First offer
 
