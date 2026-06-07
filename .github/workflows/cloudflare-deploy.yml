@@ -87,4 +87,17 @@ jobs:
             echo "Expected scanner user-agent to return 403, got $SCANNER_STATUS" >&2
             exit 1
           fi
+          SCAN_RESPONSE="$(curl -fsS \
+            -H 'content-type: application/json' \
+            -d '{"storeUrl":"https://allbirds.com"}' \
+            "$URL/store-scan")"
+          node -e "
+            const data = JSON.parse(process.argv[1]);
+            if (!data.scannedProducts || data.scannedProducts > 5) {
+              throw new Error('Expected 1-5 scanned products');
+            }
+            if (!Array.isArray(data.rows) || data.rows.length === 0) {
+              throw new Error('Expected real scan rows');
+            }
+          " "$SCAN_RESPONSE"
           echo "- Smoke tests: passed" >> "$GITHUB_STEP_SUMMARY"

@@ -23,13 +23,9 @@ The limit exists to keep crawling cost low, avoid abuse, and make the upgrade re
 
 ## Implementation stages
 
-### Stage 1: UI validation
+### Stage 1: Controlled scanner
 
-Current implementation shows the store URL workflow with demo storefront data. This validates the user journey without opening a server-side crawler yet.
-
-### Stage 2: Controlled scanner
-
-Add a server-side scanner only after the lead flow is proven:
+Current implementation includes a server-side scanner:
 
 - Accept a public Shopify store URL.
 - Discover at most 5 product URLs.
@@ -39,7 +35,9 @@ Add a server-side scanner only after the lead flow is proven:
 - Do not write to Shopify.
 - Do not call AI APIs.
 
-### Stage 3: Paid expansion
+The Cloudflare deploy workflow smoke-tests this route against a real public Shopify store and fails if more than 5 products are scanned.
+
+### Stage 2: Paid expansion
 
 After pricing intent is proven:
 

@@ -15,8 +15,8 @@ Updated: 2026-06-07
 ## Next engineering tasks
 
 - [x] Trigger Cloudflare Deploy and verify the generated `mailto:` uses the confirmed inbox.
-- [ ] Replace the current demo store scan with a server-side Shopify storefront scanner.
-- [ ] Enforce the free scan limit at 5 products on the server before enabling real crawling.
+- [x] Replace the demo store scan with a server-side Shopify storefront scanner.
+- [x] Enforce the free scan limit at 5 products on the server.
 - [ ] Add lightweight click tracking for `Generate suggestions`, `Export CSV`, `View pricing`, and `Request private audit`.
 - [ ] Add Google Search Console setup notes and submit sitemap for the canonical production domain.
 - [ ] Decide whether Vercel or Cloudflare is the canonical public URL before promotion.

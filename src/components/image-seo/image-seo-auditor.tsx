@@ -27,6 +27,17 @@ type ImageRow = {
   issues: string[];
 };
 
+type StoreScanResponse = {
+  error?: string;
+  storeUrl?: string;
+  scannedProducts?: number;
+  rows?: Array<{
+    source: string;
+    currentAlt: string;
+    productTitle: string;
+  }>;
+};
+
 const sampleCsv = `image_url,alt,title
 demo-blue-linen-shirt-front.jpg,,Blue Linen Shirt
 demo-walnut-desk-lamp.png,lamp,Walnut Desk Lamp
@@ -35,13 +46,6 @@ demo-black-running-shoes-side.jpg,Black running shoes side view,Black Running Sh
 demo-leather-tote-bag.jpg,,Leather Tote Bag`;
 const leadEmail = process.env.NEXT_PUBLIC_LEAD_EMAIL ?? 'hello@imageseofix.com';
 const freeProductLimit = 5;
-const simulatedStoreProducts = [
-  ['products/blue-linen-shirt', '', 'Blue Linen Shirt'],
-  ['products/walnut-desk-lamp', 'lamp', 'Walnut Desk Lamp'],
-  ['products/ceramic-coffee-mug', 'photo', 'Ceramic Coffee Mug'],
-  ['products/black-running-shoes', 'Black running shoes side view', 'Black Running Shoes'],
-  ['products/leather-tote-bag', '', 'Leather Tote Bag'],
-];
 
 function parseCsv(input: string): string[][] {
   const rows: string[][] = [];
@@ -199,15 +203,6 @@ function normalizeStoreUrl(value: string) {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
-function buildRowsFromStoreUrl(value: string) {
-  const normalizedStoreUrl = normalizeStoreUrl(value) || 'https://demo-store.myshopify.com';
-  const baseUrl = normalizedStoreUrl.replace(/\/+$/, '');
-
-  return simulatedStoreProducts.map(([path, currentAlt, productTitle]) =>
-    auditRow(`${baseUrl}/${path}`, currentAlt, productTitle)
-  );
-}
-
 function buildAuditSummary(rows: ImageRow[], mode: InputMode, storeUrl: string) {
   const total = rows.length;
   const affected = rows.filter((row) => row.issues.length > 0).length;
@@ -237,14 +232,14 @@ function buildAuditSummary(rows: ImageRow[], mode: InputMode, storeUrl: string) 
 
 export function ImageSeoAuditor() {
   const [mode, setMode] = useState<InputMode>('store');
-  const [scanStoreUrl, setScanStoreUrl] = useState('https://demo-store.myshopify.com');
+  const [scanStoreUrl, setScanStoreUrl] = useState('');
   const [csv, setCsv] = useState(sampleCsv);
-  const [rows, setRows] = useState<ImageRow[]>(() =>
-    buildRowsFromStoreUrl('https://demo-store.myshopify.com')
-  );
+  const [rows, setRows] = useState<ImageRow[]>([]);
   const [isWorking, setIsWorking] = useState(false);
+  const [scanError, setScanError] = useState('');
+  const [scannedProducts, setScannedProducts] = useState(0);
   const [email, setEmail] = useState('');
-  const [storeUrl, setStoreUrl] = useState('https://demo-store.myshopify.com');
+  const [storeUrl, setStoreUrl] = useState('');
   const [leadStatus, setLeadStatus] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -271,13 +266,47 @@ export function ImageSeoAuditor() {
     }, 180);
   }
 
-  function runStoreScan() {
+  async function runStoreScan() {
+    const normalizedStoreUrl = normalizeStoreUrl(scanStoreUrl);
+    if (!normalizedStoreUrl) {
+      setScanError('Enter a public Shopify store URL to scan.');
+      return;
+    }
+
     setIsWorking(true);
-    window.setTimeout(() => {
-      setRows(buildRowsFromStoreUrl(scanStoreUrl));
-      setStoreUrl(normalizeStoreUrl(scanStoreUrl));
+    setScanError('');
+    setScannedProducts(0);
+
+    try {
+      const response = await fetch('/store-scan', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ storeUrl: normalizedStoreUrl }),
+      });
+      const result = (await response.json()) as StoreScanResponse;
+
+      if (!response.ok || result.error) {
+        throw new Error(result.error || 'Unable to scan this store.');
+      }
+
+      setRows(
+        (result.rows ?? []).map((row) =>
+          auditRow(row.source, row.currentAlt, row.productTitle)
+        )
+      );
+      setStoreUrl(result.storeUrl ?? normalizedStoreUrl);
+      setScannedProducts(result.scannedProducts ?? 0);
+    } catch (error) {
+      setRows([]);
+      setStoreUrl(normalizedStoreUrl);
+      setScanError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to scan this store right now.'
+      );
+    } finally {
       setIsWorking(false);
-    }, 240);
+    }
   }
 
   function onFileChange(file?: File) {
@@ -413,9 +442,15 @@ export function ImageSeoAuditor() {
             <div className="rounded-lg border bg-muted/30 p-4 text-sm leading-6 text-muted-foreground">
               Free scans are capped at the first {freeProductLimit} products to
               keep the service fast and low-cost. Larger stores unlock more
-              products with Growth or Agency plans. This MVP shows the scan flow
-              with demo storefront data before server-side crawling is enabled.
+              products with Growth or Agency plans. The scanner reads public
+              storefront HTML only; it does not download images or write to
+              Shopify.
             </div>
+            {scanError ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm leading-6 text-destructive">
+                {scanError}
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="space-y-4">
@@ -474,7 +509,11 @@ export function ImageSeoAuditor() {
       </div>
 
       <div className="space-y-5">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="border-border bg-muted/30 rounded-lg border p-4">
+            <p className="text-sm text-muted-foreground">Products</p>
+            <p className="mt-2 text-3xl font-semibold">{scannedProducts}</p>
+          </div>
           <div className="border-border bg-muted/30 rounded-lg border p-4">
             <p className="text-sm text-muted-foreground">Images</p>
             <p className="mt-2 text-3xl font-semibold">{stats.total}</p>
@@ -496,32 +535,39 @@ export function ImageSeoAuditor() {
             <span>Status</span>
           </div>
           <div className="max-h-[480px] divide-y overflow-auto">
-            {rows.map((row, index) => (
-              <div
-                key={`${row.source}-${index}`}
-                className="grid grid-cols-[1fr_1fr_1fr] gap-3 px-4 py-3 text-sm"
-              >
-                <span className="truncate text-muted-foreground">
-                  {row.productTitle || cleanWords(row.source) || 'Untitled'}
-                </span>
-                <span className="line-clamp-2">{row.suggestedAlt}</span>
-                <div className="flex flex-wrap gap-2">
-                  {row.issues.length === 0 ? (
-                    <Badge variant="outline" className="gap-1">
-                      <CheckCircle2 className="size-3" />
-                      Ready
-                    </Badge>
-                  ) : (
-                    row.issues.map((issue) => (
-                      <Badge key={issue} variant="secondary" className="gap-1">
-                        <TriangleAlert className="size-3" />
-                        {issue}
-                      </Badge>
-                    ))
-                  )}
-                </div>
+            {rows.length === 0 ? (
+              <div className="px-4 py-10 text-center text-sm leading-6 text-muted-foreground">
+                Enter a public Shopify store URL and scan the first 5 products to
+                see real storefront image alt text issues.
               </div>
-            ))}
+            ) : (
+              rows.map((row, index) => (
+                <div
+                  key={`${row.source}-${index}`}
+                  className="grid grid-cols-[1fr_1fr_1fr] gap-3 px-4 py-3 text-sm"
+                >
+                  <span className="truncate text-muted-foreground">
+                    {row.productTitle || cleanWords(row.source) || 'Untitled'}
+                  </span>
+                  <span className="line-clamp-2">{row.suggestedAlt}</span>
+                  <div className="flex flex-wrap gap-2">
+                    {row.issues.length === 0 ? (
+                      <Badge variant="outline" className="gap-1">
+                        <CheckCircle2 className="size-3" />
+                        Ready
+                      </Badge>
+                    ) : (
+                      row.issues.map((issue) => (
+                        <Badge key={issue} variant="secondary" className="gap-1">
+                          <TriangleAlert className="size-3" />
+                          {issue}
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
