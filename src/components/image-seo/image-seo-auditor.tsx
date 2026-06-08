@@ -27,6 +27,17 @@ type ImageRow = {
   productTitle: string;
   suggestedAlt: string;
   issues: string[];
+  csvRowIndex?: number;
+};
+
+type CsvAuditResult = {
+  rows: ImageRow[];
+  productCount: number;
+  source?: {
+    headers: string[];
+    dataRows: string[][];
+    altIndex: number;
+  };
 };
 
 type StoreScanResponse = {
@@ -101,9 +112,17 @@ function parseCsv(input: string): string[][] {
 }
 
 function cleanWords(value: string) {
-  return value
-    .replace(/^https?:\/\/[^/]+\//, '')
-    .replace(/\.[a-z0-9]{2,5}(\?.*)?$/i, '')
+  let filename = value;
+
+  try {
+    const parsedUrl = new URL(value);
+    filename = parsedUrl.pathname.split('/').filter(Boolean).pop() ?? value;
+  } catch {
+    filename = value.split(/[?#]/)[0].split('/').filter(Boolean).pop() ?? value;
+  }
+
+  return filename
+    .replace(/\.[a-z0-9]{2,5}$/i, '')
     .replace(/[_-]+/g, ' ')
     .replace(/\b(img|image|photo|copy|final|front|side|main)\b/gi, ' ')
     .replace(/\s+/g, ' ')
@@ -123,7 +142,7 @@ function createSuggestion(source: string, currentAlt: string, productTitle: stri
   const trimmedTitle = title.trim();
   const normalizedCurrent = currentAlt.trim();
 
-  if (normalizedCurrent.length > 20 && trimmedTitle) {
+  if (normalizedCurrent.length > 20 && normalizedCurrent.length <= 125) {
     return normalizedCurrent;
   }
 
@@ -170,29 +189,144 @@ function csvEscape(value: string) {
   return value;
 }
 
-function buildRowsFromCsv(input: string): ImageRow[] {
-  const rows = parseCsv(input);
-  if (rows.length === 0) {
-    return [];
+function normalizeHeader(header: string) {
+  return header
+    .replace(/^\uFEFF/, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function findHeaderIndex(headers: string[], options: string[]) {
+  return headers.findIndex((header) => options.includes(header));
+}
+
+function buildRowsFromCsv(input: string): CsvAuditResult {
+  const parsedRows = parseCsv(input);
+  if (parsedRows.length === 0) {
+    return { rows: [], productCount: 0 };
   }
 
-  const headers = rows[0].map((header) => header.toLowerCase());
-  const imageIndex = headers.findIndex((header) =>
-    ['image_url', 'image', 'src', 'url'].includes(header)
-  );
-  const altIndex = headers.findIndex((header) =>
-    ['alt', 'alt_text', 'image_alt'].includes(header)
-  );
-  const titleIndex = headers.findIndex((header) =>
-    ['title', 'product_title', 'name'].includes(header)
-  );
+  const headers = parsedRows[0];
+  const normalizedHeaders = headers.map(normalizeHeader);
+  const imageIndex = findHeaderIndex(normalizedHeaders, [
+    'image_src',
+    'image_url',
+    'image',
+    'src',
+    'url',
+    'variant_image',
+  ]);
+  const altIndex = findHeaderIndex(normalizedHeaders, [
+    'image_alt_text',
+    'alt',
+    'alt_text',
+    'image_alt',
+  ]);
+  const titleIndex = findHeaderIndex(normalizedHeaders, [
+    'title',
+    'product_title',
+    'name',
+  ]);
+  const handleIndex = findHeaderIndex(normalizedHeaders, [
+    'handle',
+    'product_handle',
+  ]);
 
-  return rows.slice(1).map((row) =>
-    auditRow(
-      row[imageIndex >= 0 ? imageIndex : 0] ?? '',
-      row[altIndex >= 0 ? altIndex : 1] ?? '',
-      row[titleIndex >= 0 ? titleIndex : 2] ?? ''
-    )
+  const dataRows = parsedRows.slice(1);
+  const productOrder: string[] = [];
+  const productTitles = new Map<string, string>();
+  const auditedRows: ImageRow[] = [];
+
+  dataRows.forEach((row, rowIndex) => {
+    const productKey =
+      row[handleIndex] || row[titleIndex] || row[imageIndex] || `row-${rowIndex}`;
+    const rowTitle = row[titleIndex] ?? '';
+
+    if (!productOrder.includes(productKey)) {
+      productOrder.push(productKey);
+    }
+    if (rowTitle) {
+      productTitles.set(productKey, rowTitle);
+    }
+
+    if (productOrder.indexOf(productKey) >= freeProductLimit) {
+      return;
+    }
+
+    const source = row[imageIndex] ?? '';
+    if (!source) {
+      return;
+    }
+
+    const auditedRow = auditRow(
+      source,
+      row[altIndex] ?? '',
+      productTitles.get(productKey) ?? rowTitle
+    );
+    auditedRows.push({ ...auditedRow, csvRowIndex: rowIndex });
+  });
+
+  const source =
+    altIndex >= 0
+      ? {
+          headers,
+          dataRows,
+          altIndex,
+        }
+      : undefined;
+
+  return {
+    rows: auditedRows,
+    productCount: Math.min(productOrder.length, freeProductLimit),
+    source,
+  };
+}
+
+function buildAuditCsv(rows: ImageRow[]) {
+  return [
+    ['image_url', 'current_alt', 'suggested_alt', 'issues'].join(','),
+    ...rows.map((row) =>
+      [row.source, row.currentAlt, row.suggestedAlt, row.issues.join('; ')]
+        .map(csvEscape)
+        .join(',')
+    ),
+  ].join('\n');
+}
+
+function buildShopifyCsv(
+  source: CsvAuditResult['source'],
+  rows: ImageRow[]
+) {
+  if (!source) {
+    return buildAuditCsv(rows);
+  }
+
+  const outputRows = source.dataRows.map((row) => [...row]);
+  rows.forEach((row) => {
+    if (row.csvRowIndex === undefined) {
+      return;
+    }
+    outputRows[row.csvRowIndex][source.altIndex] = row.suggestedAlt;
+  });
+
+  return [
+    source.headers.map(csvEscape).join(','),
+    ...outputRows.map((row) => row.map(csvEscape).join(',')),
+  ].join('\n');
+}
+
+function isShopifyReadyCsv(source?: CsvAuditResult['source']) {
+  if (!source) {
+    return false;
+  }
+  const headers = source.headers.map(normalizeHeader);
+  return (
+    headers.includes('handle') &&
+    headers.includes('title') &&
+    headers.includes('image_src') &&
+    headers.includes('image_alt_text')
   );
 }
 
@@ -244,7 +378,9 @@ export function ImageSeoAuditor() {
   const [storeUrl, setStoreUrl] = useState('');
   const [leadStatus, setLeadStatus] = useState('');
   const [copiedRow, setCopiedRow] = useState('');
+  const [csvSource, setCsvSource] = useState<CsvAuditResult['source']>();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hasShopifyReadyCsv = isShopifyReadyCsv(csvSource);
 
   const stats = useMemo(() => {
     const total = rows.length;
@@ -264,11 +400,13 @@ export function ImageSeoAuditor() {
   function runAudit(nextCsv = csv) {
     setIsWorking(true);
     window.setTimeout(() => {
-      const nextRows = buildRowsFromCsv(nextCsv);
-      setRows(nextRows);
+      const result = buildRowsFromCsv(nextCsv);
+      setRows(result.rows);
+      setScannedProducts(result.productCount);
+      setCsvSource(result.source);
       trackEvent('csv_generate', {
-        imageRows: nextRows.length,
-        issueCount: nextRows.filter((row) => row.issues.length > 0).length,
+        imageRows: result.rows.length,
+        issueCount: result.rows.filter((row) => row.issues.length > 0).length,
       });
       setIsWorking(false);
     }, 180);
@@ -304,6 +442,7 @@ export function ImageSeoAuditor() {
           auditRow(row.source, row.currentAlt, row.productTitle)
         )
       );
+      setCsvSource(undefined);
       setStoreUrl(result.storeUrl ?? normalizedStoreUrl);
       setScannedProducts(result.scannedProducts ?? 0);
       trackEvent('store_scan_success', {
@@ -312,6 +451,7 @@ export function ImageSeoAuditor() {
       });
     } catch (error) {
       setRows([]);
+      setCsvSource(undefined);
       setStoreUrl(normalizedStoreUrl);
       setScanError(
         error instanceof Error
@@ -348,25 +488,17 @@ export function ImageSeoAuditor() {
       issueCount: rows.filter((row) => row.issues.length > 0).length,
     });
 
-    const output = [
-      ['image_url', 'current_alt', 'suggested_alt', 'issues'].join(','),
-      ...rows.map((row) =>
-        [
-          row.source,
-          row.currentAlt,
-          row.suggestedAlt,
-          row.issues.join('; '),
-        ]
-          .map(csvEscape)
-          .join(',')
-      ),
-    ].join('\n');
+    const output = hasShopifyReadyCsv
+      ? buildShopifyCsv(csvSource, rows)
+      : buildAuditCsv(rows);
 
     const blob = new Blob([output], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'imageseofix-alt-text-audit.csv';
+    link.download = hasShopifyReadyCsv
+      ? 'imageseofix-shopify-products-cleaned.csv'
+      : 'imageseofix-alt-text-audit.csv';
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -511,9 +643,10 @@ export function ImageSeoAuditor() {
               aria-label="CSV input"
             />
             <p className="text-sm leading-6 text-muted-foreground">
-              Paste Shopify product export columns like image_url, alt, and
-              title. Demo rows use filenames, not fake CDN links. The browser-only
-              MVP does not fetch or upload images.
+              Upload the Products CSV exported from Shopify, or paste columns
+              like Handle, Title, Image Src, and Image Alt Text. Free CSV checks
+              only use the first 5 products and preserve the original CSV shape
+              for safer import.
             </p>
           </div>
         )}
@@ -546,7 +679,7 @@ export function ImageSeoAuditor() {
             disabled={rows.length === 0}
           >
             <Download className="size-4" />
-            Export CSV
+            {hasShopifyReadyCsv ? 'Export Shopify CSV' : 'Export CSV'}
           </Button>
           <input
             ref={fileInputRef}
@@ -585,9 +718,10 @@ export function ImageSeoAuditor() {
               Next step: review, copy, or export
             </div>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Use Copy for a few manual fixes in Shopify Admin, or Export CSV
-              when you want a batch cleanup file. Keep a backup of your original
-              Shopify product CSV before importing changes.
+              Use Copy for a few manual fixes in Shopify Admin, or export a
+              Shopify CSV that keeps your original columns and updates Image Alt
+              Text for the checked rows. Keep a backup of your original Shopify
+              product CSV before importing changes.
             </p>
           </div>
         ) : null}
