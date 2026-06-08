@@ -7,6 +7,7 @@ const allowedEvents = new Set([
   'hero_scan_click',
   'lead_request_missing_email',
   'lead_request_submit',
+  'manual_fix_copy',
   'pricing_cta_click',
   'pricing_view',
   'smoke_test',

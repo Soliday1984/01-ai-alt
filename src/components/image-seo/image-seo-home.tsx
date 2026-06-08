@@ -5,9 +5,12 @@ import { Button } from '@/components/ui/button';
 import {
   ArrowRight,
   CheckCircle2,
+  ClipboardCheck,
+  Download,
   Gauge,
   Lock,
   Mail,
+  MousePointerClick,
   Search,
   ShoppingBag,
   Store,
@@ -18,18 +21,62 @@ import {
 const workflow = [
   {
     icon: Store,
-    title: 'Enter a Shopify store URL',
-    body: 'Start with the first 5 products for free, so merchants can see image SEO gaps without preparing a file.',
+    title: 'Scan a real storefront',
+    body: 'Use a public Shopify store URL first. The free scan checks 5 products without asking for app permissions.',
   },
   {
     icon: Gauge,
-    title: 'Find image SEO gaps',
-    body: 'Flag missing, too-short, too-long, or generic alt text before Google indexes weak product pages.',
+    title: 'Review weak alt text',
+    body: 'See missing, generic, too-short, or shade-only alt text in one table with product-aware repair suggestions.',
   },
   {
-    icon: WandSparkles,
-    title: 'Upgrade when the store is larger',
-    body: 'Growth and Agency tiers expand scan volume, exports, cleanup support, and multi-store workflows.',
+    icon: ClipboardCheck,
+    title: 'Fix safely in Shopify',
+    body: 'Copy a few suggestions manually or export a cleanup CSV after backing up the original Shopify product file.',
+  },
+];
+
+const bestPracticeSteps = [
+  {
+    icon: Store,
+    title: 'Start with your storefront URL',
+    body: 'Paste a real merchant storefront, not shopify.com itself. The scan is read-only and never writes to Shopify.',
+  },
+  {
+    icon: MousePointerClick,
+    title: 'Fix a small sample manually',
+    body: 'For a few images, copy the suggested alt text, open Shopify Admin > Products, select the product media, edit alt text, and save.',
+  },
+  {
+    icon: Download,
+    title: 'Use CSV for batch cleanup',
+    body: 'For larger stores, export Products CSV from Shopify, keep a backup, upload it here, review suggestions, then import the cleaned CSV back.',
+  },
+  {
+    icon: Mail,
+    title: 'Ask for full-store cleanup',
+    body: 'If the sample shows many issues, request a private audit for a Shopify-ready cleanup workflow or human-reviewed CSV.',
+  },
+];
+
+const exampleRows = [
+  {
+    image: 'foundation-shade-210.png',
+    current: '210 light medium',
+    fix: 'Haus Labs foundation shade 210 light medium product image',
+    status: 'Needs context',
+  },
+  {
+    image: 'linen-shirt-front.jpg',
+    current: 'Missing',
+    fix: 'Blue linen shirt front product image',
+    status: 'Missing alt',
+  },
+  {
+    image: 'walnut-desk-lamp.png',
+    current: 'lamp',
+    fix: 'Walnut desk lamp with brass shade product image',
+    status: 'Too short',
   },
 ];
 
@@ -90,20 +137,20 @@ const pricingPlans = [
 
 export function ImageSeoHome() {
   return (
-    <div className="flex flex-col">
-      <section className="mx-auto grid min-h-[calc(100vh-5rem)] w-full max-w-7xl content-center gap-10 px-4 py-12 md:grid-cols-[0.92fr_1.08fr] md:px-6 lg:px-8">
-        <div className="flex flex-col justify-center">
-          <Badge variant="outline" className="mb-5 w-fit gap-2">
+    <div className="flex flex-col bg-background">
+      <section className="mx-auto grid min-h-[calc(100dvh-5rem)] w-full max-w-7xl content-center gap-10 px-4 py-12 md:grid-cols-[0.9fr_1.1fr] md:px-6 lg:px-8">
+        <div className="flex min-w-0 flex-col justify-center">
+          <Badge variant="outline" className="mb-5 w-fit gap-2 border-primary/30 bg-primary/5 text-primary">
             <ShoppingBag className="size-3.5" />
-            Built for Shopify merchants and SEO agencies
+            Built for Shopify stores that need fixes, not another report
           </Badge>
-          <h1 className="max-w-3xl text-4xl font-semibold tracking-normal md:text-6xl">
-            Shopify image SEO scanner with 5 products free
+          <h1 className="max-w-3xl text-4xl font-semibold leading-[1.02] tracking-normal md:text-6xl">
+            Find weak Shopify image alt text and turn it into a cleanup file.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-            ImageSEOFix scans a Shopify store sample, flags weak product image
-            alt text, writes product-aware suggestions, and shows when a larger
-            paid cleanup workflow is worth it.
+            ImageSEOFix scans a real store sample, shows the alt text that needs
+            work, and gives merchants a safe path to copy fixes or prepare a
+            Shopify CSV cleanup workflow.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg">
@@ -121,40 +168,61 @@ export function ImageSeoHome() {
           <div className="mt-8 grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="size-4 text-primary" />
-              5-product free scan
+              Read-only public scan
             </div>
             <div className="flex items-center gap-2">
               <Lock className="size-4 text-primary" />
-              Low-cost trial
+              No Shopify app install
             </div>
             <div className="flex items-center gap-2">
               <Search className="size-4 text-primary" />
-              SEO-ready pages
+              Manual or CSV fix path
             </div>
           </div>
         </div>
 
-        <div className="flex items-center">
-          <div className="w-full overflow-hidden rounded-lg border bg-muted/30 shadow-sm">
-            <div className="grid grid-cols-[1.2fr_0.9fr_0.9fr] gap-3 border-b bg-background/80 px-4 py-3 text-sm font-medium">
-              <span>Product image</span>
-              <span>Current alt</span>
-              <span>Fix</span>
-            </div>
-            {[
-              ['linen-shirt-front.jpg', 'Missing', 'White linen shirt product image'],
-              ['walnut-desk-lamp.png', 'lamp', 'Walnut desk lamp product image'],
-              ['ceramic-mug-main.jpg', 'Ready', 'No issue'],
-            ].map(([image, issue, fix]) => (
-              <div
-                key={image}
-                className="grid grid-cols-[1.2fr_0.9fr_0.9fr] gap-3 border-b px-4 py-4 text-sm last:border-b-0"
-              >
-                <span className="truncate text-muted-foreground">{image}</span>
-                <span>{issue}</span>
-                <span className="line-clamp-2">{fix}</span>
+        <div className="flex min-w-0 items-center">
+          <div className="min-w-0 w-full overflow-hidden rounded-lg border bg-card shadow-sm">
+            <div className="border-b bg-muted/35 px-5 py-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">Sample cleanup table</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    What a merchant sees after scanning 5 products
+                  </p>
+                </div>
+                <Badge variant="secondary">5 products free</Badge>
               </div>
-            ))}
+            </div>
+            <div className="overflow-x-auto">
+              <div className="grid min-w-[680px] grid-cols-[1.1fr_0.75fr_1.15fr_0.75fr] gap-3 border-b px-5 py-3 text-xs font-medium uppercase text-muted-foreground">
+                <span>Image</span>
+                <span>Current</span>
+                <span>Suggested fix</span>
+                <span>Status</span>
+              </div>
+              {exampleRows.map((row) => (
+                <div
+                  key={row.image}
+                  className="grid min-w-[680px] grid-cols-[1.1fr_0.75fr_1.15fr_0.75fr] gap-3 border-b px-5 py-4 text-sm last:border-b-0"
+                >
+                  <span className="truncate text-muted-foreground">{row.image}</span>
+                  <span>{row.current}</span>
+                  <span className="line-clamp-2">{row.fix}</span>
+                  <span className="text-primary">{row.status}</span>
+                </div>
+              ))}
+            </div>
+            <div className="grid gap-3 bg-muted/20 px-5 py-4 text-sm sm:grid-cols-3">
+              {['Scan', 'Review', 'Fix in Shopify'].map((item, index) => (
+                <div key={item} className="flex items-center gap-2">
+                  <span className="flex size-6 items-center justify-center rounded-md bg-primary text-xs font-semibold text-primary-foreground">
+                    {index + 1}
+                  </span>
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -165,12 +233,11 @@ export function ImageSeoHome() {
         <div className="max-w-2xl">
           <p className="text-sm font-medium uppercase text-primary">Workflow</p>
           <h2 className="mt-3 text-3xl font-semibold">
-            From export to publishable alt text
+            From scan to a real Shopify fix
           </h2>
           <p className="mt-4 text-muted-foreground">
-            The first release is intentionally narrow: solve one painful store
-            maintenance job, show value on a small free sample, and charge for
-            larger scans or private cleanup once demand is proven.
+            The product is intentionally narrow: help a store owner understand
+            which images need work, then choose the safest way to update Shopify.
           </p>
         </div>
         <div className="mt-10 grid gap-4 md:grid-cols-3">
@@ -260,6 +327,49 @@ export function ImageSeoHome() {
               </Button>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section id="best-practice" className="border-t bg-muted/25">
+        <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 md:grid-cols-[0.85fr_1.15fr] md:px-6 lg:px-8">
+          <div>
+            <p className="text-sm font-medium uppercase text-primary">
+              Best practice
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold">
+              How to use the recommendations safely
+            </h2>
+            <p className="mt-4 leading-7 text-muted-foreground">
+              Use the free scan as a sample audit. If the problems are real,
+              fix a few images manually or move to a CSV cleanup workflow for
+              larger catalogs. ImageSEOFix does not write to your store without
+              you reviewing the output.
+            </p>
+            <div className="mt-6 rounded-lg border bg-background p-4 text-sm leading-6 text-muted-foreground">
+              Before importing any edited Shopify CSV, keep a backup of the
+              original export and spot-check a few products after import.
+            </div>
+          </div>
+          <div className="grid gap-4">
+            {bestPracticeSteps.map((step, index) => (
+              <div key={step.title} className="grid gap-4 rounded-lg border bg-background p-5 sm:grid-cols-[auto_1fr]">
+                <div className="flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <step.icon className="size-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold uppercase text-muted-foreground">
+                      Step {index + 1}
+                    </span>
+                    <h3 className="text-lg font-semibold">{step.title}</h3>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {step.body}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     </div>

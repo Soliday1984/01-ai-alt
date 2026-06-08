@@ -1,9 +1,19 @@
 import '@/styles/globals.css';
 
 import type { Metadata, Viewport } from 'next';
+import { Geist, Geist_Mono } from 'next/font/google';
 import type { ReactNode } from 'react';
 
 const siteUrl = 'https://01-ai-alt.vercel.app';
+
+const geist = Geist({
+  subsets: ['latin'],
+  variable: '--font-geist-sans',
+});
+const geistMono = Geist_Mono({
+  subsets: ['latin'],
+  variable: '--font-geist-mono',
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -29,7 +39,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
       <body>{children}</body>
     </html>
   );

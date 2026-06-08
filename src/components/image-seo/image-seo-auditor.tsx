@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { trackEvent } from '@/lib/analytics';
 import {
   CheckCircle2,
+  Copy,
   Download,
   FileUp,
   Image as ImageIcon,
@@ -242,6 +243,7 @@ export function ImageSeoAuditor() {
   const [email, setEmail] = useState('');
   const [storeUrl, setStoreUrl] = useState('');
   const [leadStatus, setLeadStatus] = useState('');
+  const [copiedRow, setCopiedRow] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const stats = useMemo(() => {
@@ -369,6 +371,21 @@ export function ImageSeoAuditor() {
     URL.revokeObjectURL(url);
   }
 
+  async function copySuggestion(row: ImageRow, index: number) {
+    const key = `${row.source}-${index}`;
+    try {
+      await navigator.clipboard.writeText(row.suggestedAlt);
+      setCopiedRow(key);
+      window.setTimeout(() => setCopiedRow(''), 1400);
+      trackEvent('manual_fix_copy', {
+        mode,
+        issueCount: row.issues.length,
+      });
+    } catch {
+      setLeadStatus('Copy failed. Select the suggested alt text manually.');
+    }
+  }
+
   function requestPrivateAudit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -413,7 +430,7 @@ export function ImageSeoAuditor() {
       id="tool"
       className="border-border bg-background mx-auto grid w-full max-w-7xl scroll-mt-24 gap-6 border-y px-4 py-8 md:grid-cols-[0.95fr_1.05fr] md:px-6 lg:px-8"
     >
-      <div className="space-y-5">
+      <div className="min-w-0 space-y-5">
         <div className="flex items-center gap-3">
           <div className="bg-primary/10 text-primary flex size-11 items-center justify-center rounded-lg">
             <ImageIcon className="size-5" />
@@ -541,7 +558,7 @@ export function ImageSeoAuditor() {
         </div>
       </div>
 
-      <div className="space-y-5">
+      <div className="min-w-0 space-y-5">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="border-border bg-muted/30 rounded-lg border p-4">
             <p className="text-sm text-muted-foreground">Products</p>
@@ -561,13 +578,29 @@ export function ImageSeoAuditor() {
           </div>
         </div>
 
+        {rows.length > 0 ? (
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <CheckCircle2 className="size-4 text-primary" />
+              Next step: review, copy, or export
+            </div>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Use Copy for a few manual fixes in Shopify Admin, or Export CSV
+              when you want a batch cleanup file. Keep a backup of your original
+              Shopify product CSV before importing changes.
+            </p>
+          </div>
+        ) : null}
+
         <div className="border-border overflow-hidden rounded-lg border">
-          <div className="bg-muted/40 grid grid-cols-[1fr_1fr_1fr] gap-3 border-b px-4 py-3 text-sm font-medium">
+          <div className="overflow-x-auto">
+            <div className="bg-muted/40 grid min-w-[780px] grid-cols-[1fr_1fr_0.8fr_0.7fr] gap-3 border-b px-4 py-3 text-sm font-medium">
             <span>Product / image row</span>
+            <span>Current alt</span>
             <span>Suggested alt</span>
             <span>Status</span>
-          </div>
-          <div className="max-h-[480px] divide-y overflow-auto">
+            </div>
+            <div className="max-h-[480px] min-w-[780px] divide-y overflow-auto">
             {rows.length === 0 ? (
               <div className="px-4 py-10 text-center text-sm leading-6 text-muted-foreground">
                 Enter a public Shopify store URL and scan the first 5 products to
@@ -577,12 +610,27 @@ export function ImageSeoAuditor() {
               rows.map((row, index) => (
                 <div
                   key={`${row.source}-${index}`}
-                  className="grid grid-cols-[1fr_1fr_1fr] gap-3 px-4 py-3 text-sm"
+                  className="grid grid-cols-[1fr_1fr_0.8fr_0.7fr] gap-3 px-4 py-3 text-sm"
                 >
                   <span className="truncate text-muted-foreground">
                     {row.productTitle || cleanWords(row.source) || 'Untitled'}
                   </span>
-                  <span className="line-clamp-2">{row.suggestedAlt}</span>
+                  <span className="line-clamp-2 text-muted-foreground">
+                    {row.currentAlt || 'Missing'}
+                  </span>
+                  <div className="space-y-2">
+                    <span className="line-clamp-2">{row.suggestedAlt}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => copySuggestion(row, index)}
+                    >
+                      <Copy className="size-3.5" />
+                      {copiedRow === `${row.source}-${index}` ? 'Copied' : 'Copy'}
+                    </Button>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {row.issues.length === 0 ? (
                       <Badge variant="outline" className="gap-1">
@@ -601,6 +649,7 @@ export function ImageSeoAuditor() {
                 </div>
               ))
             )}
+            </div>
           </div>
         </div>
 
