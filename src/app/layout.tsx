@@ -4,7 +4,7 @@ import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import type { ReactNode } from 'react';
 
-const siteUrl = 'https://01-ai-alt.vercel.app';
+const siteUrl = 'https://imageseofix.com';
 
 const geist = Geist({
   subsets: ['latin'],

@@ -5,7 +5,7 @@ const maxImagesPerProduct = 3;
 const fetchTimeoutMs = 5000;
 const maxHtmlBytes = 700_000;
 const scannerUserAgent =
-  'ImageSEOFixBot/0.1 (+https://imageseofix.soliday1984.workers.dev)';
+  'ImageSEOFixBot/0.1 (+https://imageseofix.com)';
 
 type ScanRow = {
   source: string;

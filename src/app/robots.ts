@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/api/', '/admin/', '/dashboard/', '/settings/', '/auth/'],
       },
     ],
-    sitemap: 'https://01-ai-alt.vercel.app/sitemap.xml',
+    sitemap: 'https://imageseofix.com/sitemap.xml',
   };
 }

@@ -71,6 +71,13 @@ function textResponse(message: string, status: number) {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const userAgent = request.headers.get('user-agent') ?? '';
+  const hostname = request.nextUrl.hostname.toLowerCase();
+
+  if (hostname === 'www.imageseofix.com') {
+    const url = request.nextUrl.clone();
+    url.hostname = 'imageseofix.com';
+    return applySecurityHeaders(NextResponse.redirect(url, 301));
+  }
 
   if (isBlockedUserAgent(userAgent)) {
     return textResponse('Forbidden', 403);

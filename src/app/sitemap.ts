@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-const baseUrl = 'https://01-ai-alt.vercel.app';
+const baseUrl = 'https://imageseofix.com';
 
 const routes = [
   '',
