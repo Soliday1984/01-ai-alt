@@ -7,6 +7,7 @@ import { trackEvent } from '@/lib/analytics';
 import {
   CheckCircle2,
   Copy,
+  CreditCard,
   Download,
   FileUp,
   Image as ImageIcon,
@@ -58,6 +59,7 @@ demo-ceramic-coffee-mug-main.jpg,photo,Ceramic Coffee Mug
 demo-black-running-shoes-side.jpg,Black running shoes side view,Black Running Shoes
 demo-leather-tote-bag.jpg,,Leather Tote Bag`;
 const leadEmail = process.env.NEXT_PUBLIC_LEAD_EMAIL ?? 'hello@imageseofix.com';
+const paymentLink = process.env.NEXT_PUBLIC_PAYMENT_LINK ?? '';
 const freeProductLimit = 5;
 
 function parseCsv(input: string): string[][] {
@@ -537,18 +539,20 @@ export function ImageSeoAuditor() {
       productCount: scannedProducts,
     });
 
-    const subject = 'Private Shopify image SEO audit request';
+    const subject = 'Full Shopify alt text cleanup quote';
     const body = [
       'Hi ImageSEOFix,',
       '',
-      'I want help fixing product image alt text for my store.',
+      'I want a full-store Shopify image alt text cleanup quote.',
       '',
       `Reply email: ${email.trim()}`,
       `Store URL: ${storeUrl.trim() || 'Not provided yet'}`,
+      'Preferred payment: Stripe, PayPal, or invoice',
+      'Catalog size: Please estimate after reviewing the audit summary and Shopify Products CSV.',
       '',
       buildAuditSummary(rows, mode, storeUrl),
       '',
-      'Please send the recommended next step and price.',
+      'Please send the recommended next step, fixed price, and payment link.',
     ].join('\n');
 
     window.location.href = `mailto:${leadEmail}?subject=${encodeURIComponent(
@@ -712,17 +716,69 @@ export function ImageSeoAuditor() {
         </div>
 
         {rows.length > 0 ? (
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <CheckCircle2 className="size-4 text-primary" />
-              Next step: review, copy, or export
+          <div className="space-y-3">
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <CheckCircle2 className="size-4 text-primary" />
+                Next step: review, copy, or export
+              </div>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Use Copy for a few manual fixes in Shopify Admin, or export a
+                Shopify CSV that keeps your original columns and updates Image Alt
+                Text for the checked rows. Keep a backup of your original Shopify
+                product CSV before importing changes.
+              </p>
             </div>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Use Copy for a few manual fixes in Shopify Admin, or export a
-              Shopify CSV that keeps your original columns and updates Image Alt
-              Text for the checked rows. Keep a backup of your original Shopify
-              product CSV before importing changes.
-            </p>
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <CreditCard className="size-4 text-emerald-700" />
+                Want the full store fixed?
+              </div>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                The free scan checks the first {freeProductLimit} products. For
+                the full catalog, send the audit summary and your Shopify Products
+                CSV. We return a Shopify-ready CSV with reviewed Image Alt Text
+                for all product images.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <Button asChild size="sm">
+                  <a
+                    href="#lead"
+                    onClick={() =>
+                      trackEvent('full_store_fix_cta_click', {
+                        mode,
+                        imageRows: rows.length,
+                        issueCount: rows.filter((row) => row.issues.length > 0)
+                          .length,
+                      })
+                    }
+                  >
+                    Request full-store fix
+                  </a>
+                </Button>
+                {paymentLink ? (
+                  <Button asChild size="sm" variant="outline">
+                    <a
+                      href={paymentLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() =>
+                        trackEvent('payment_link_click', {
+                          mode,
+                          imageRows: rows.length,
+                        })
+                      }
+                    >
+                      Reserve cleanup slot
+                    </a>
+                  </Button>
+                ) : null}
+                <span className="text-xs leading-5 text-muted-foreground">
+                  Validation offer: manual Shopify CSV cleanup, paid after scope
+                  confirmation.
+                </span>
+              </div>
+            </div>
           </div>
         ) : null}
 
@@ -806,11 +862,12 @@ export function ImageSeoAuditor() {
         >
           <div className="flex items-center gap-2 text-sm font-medium">
             <Mail className="size-4 text-primary" />
-            Want us to fix the full store?
+            Get the full store fixed
           </div>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Send the current audit summary and get a private batch cleanup quote.
-            Best for stores with 100+ product images or agency client work.
+            Send the current audit summary and request a fixed-price cleanup for
+            your full Shopify Products CSV. We review the file, update Image Alt
+            Text, and send back an import-ready CSV.
           </p>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -846,11 +903,30 @@ export function ImageSeoAuditor() {
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button type="submit">
               <Mail className="size-4" />
-              Request private audit
+              Request cleanup quote
             </Button>
+            {paymentLink ? (
+              <Button asChild variant="outline">
+                <a
+                  href={paymentLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() =>
+                    trackEvent('payment_link_click', {
+                      mode,
+                      imageRows: rows.length,
+                    })
+                  }
+                >
+                  <CreditCard className="size-4" />
+                  Pay for manual cleanup
+                </a>
+              </Button>
+            ) : null}
             <p className="text-xs leading-5 text-muted-foreground">
               No login yet. Your CSV stays in the browser unless you choose to
-              email the summary.
+              email the summary. Payment can be handled by Stripe, Gumroad, or
+              PayPal after we confirm the catalog size.
             </p>
           </div>
           {leadStatus ? (
