@@ -50,7 +50,7 @@ const bestPracticeSteps = [
   {
     icon: Download,
     title: 'Use CSV for batch cleanup',
-    body: 'For larger stores, export Products CSV from Shopify, keep a backup, upload it here, review suggestions, then import the cleaned CSV back.',
+    body: 'For larger stores, export the full Products CSV from Shopify, keep a backup, upload it here, review suggestions, then import the cleaned copy.',
   },
   {
     icon: Mail,
@@ -62,11 +62,11 @@ const bestPracticeSteps = [
 const csvDeliverySteps = [
   {
     title: 'Export Products CSV',
-    body: 'In Shopify Admin, go to Products, export the current product CSV, and keep the original file as a backup.',
+    body: 'In Shopify Admin, go to Products, export the current full Products CSV, and keep the original file as a backup.',
   },
   {
     title: 'Upload to ImageSEOFix',
-    body: 'Use the CSV fallback and upload the Shopify file. The free preview checks the first 5 products and preserves the original columns.',
+    body: 'Upload the Shopify export without deleting option, variant, image, or market columns. The free preview checks the first 5 products.',
   },
   {
     title: 'Review the preview',
@@ -78,7 +78,7 @@ const csvDeliverySteps = [
   },
   {
     title: 'Import carefully',
-    body: 'Import the cleaned CSV back into Shopify, spot-check a few products, and keep the backup until the catalog looks correct.',
+    body: 'Import the cleaned copy with matching handles overwrite enabled, review Shopify preview, spot-check products, and keep the backup.',
   },
 ];
 
@@ -315,8 +315,9 @@ export function ImageSeoHome() {
           </h2>
           <p className="mt-4 text-muted-foreground">
             ImageSEOFix starts with a free preview, then turns a real Shopify
-            Products CSV into a file a merchant can review and import. This is
-            the paid delivery path before a full Shopify app is necessary.
+            Products CSV into a file a merchant can review and import. The
+            workflow preserves Shopify option and variant columns so the file
+            remains safe to test in Shopify&apos;s import preview.
           </p>
         </div>
         <div className="mt-10 grid gap-4 md:grid-cols-5">
@@ -399,7 +400,9 @@ export function ImageSeoHome() {
             </p>
             <div className="mt-6 rounded-lg border bg-background p-4 text-sm leading-6 text-muted-foreground">
               Before importing any edited Shopify CSV, keep a backup of the
-              original export and spot-check a few products after import.
+              original export, keep option and variant columns intact, enable
+              matching handles overwrite only on the cleaned copy, and
+              spot-check a few products after import.
             </div>
           </div>
           <div className="grid gap-4">

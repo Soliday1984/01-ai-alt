@@ -31,17 +31,21 @@ type ImageRow = {
   csvRowIndex?: number;
 };
 
+type CsvSource = {
+  headers: string[];
+  dataRows: string[][];
+  altIndex: number;
+  importReady: boolean;
+  safetyIssues: string[];
+};
+
 type CsvAuditResult = {
   rows: ImageRow[];
   productCount: number;
   totalProductCount: number;
   checkedProductCount: number;
   remainingProductCount: number;
-  source?: {
-    headers: string[];
-    dataRows: string[][];
-    altIndex: number;
-  };
+  source?: CsvSource;
 };
 
 type StoreScanResponse = {
@@ -223,11 +227,12 @@ function buildRowsFromCsv(input: string): CsvAuditResult {
   const normalizedHeaders = headers.map(normalizeHeader);
   const imageIndex = findHeaderIndex(normalizedHeaders, [
     'image_src',
+    'product_image_url',
     'image_url',
     'image',
     'src',
     'url',
-    'variant_image',
+    'variant_image_url',
   ]);
   const altIndex = findHeaderIndex(normalizedHeaders, [
     'image_alt_text',
@@ -242,7 +247,16 @@ function buildRowsFromCsv(input: string): CsvAuditResult {
   ]);
   const handleIndex = findHeaderIndex(normalizedHeaders, [
     'handle',
+    'url_handle',
     'product_handle',
+  ]);
+  const option1NameIndex = findHeaderIndex(normalizedHeaders, [
+    'option1_name',
+    'option_1_name',
+  ]);
+  const option1ValueIndex = findHeaderIndex(normalizedHeaders, [
+    'option1_value',
+    'option_1_value',
   ]);
 
   const dataRows = parsedRows.slice(1);
@@ -281,12 +295,43 @@ function buildRowsFromCsv(input: string): CsvAuditResult {
 
   const checkedProductCount = Math.min(productOrder.length, freeProductLimit);
 
-  const source =
+  const hasShopifyImageFields =
+    handleIndex >= 0 && titleIndex >= 0 && imageIndex >= 0 && altIndex >= 0;
+  const hasVariantIdentity = option1NameIndex >= 0 && option1ValueIndex >= 0;
+  const hasNonPublicImageUrls =
+    imageIndex >= 0 &&
+    dataRows.some((row) => {
+      const source = row[imageIndex]?.trim();
+      return source ? !/^https?:\/\//i.test(source) : false;
+    });
+  const importReady =
+    hasShopifyImageFields && hasVariantIdentity && !hasNonPublicImageUrls;
+  const safetyIssues: string[] = [];
+
+  if (hasShopifyImageFields && !hasVariantIdentity) {
+    safetyIssues.push(
+      'Missing Option1 Name and Option1 Value. Shopify can reject simplified image CSVs or change variants when those columns are absent.'
+    );
+  }
+  if (altIndex >= 0 && !hasShopifyImageFields) {
+    safetyIssues.push(
+      'This looks useful for auditing, but it is not the full Shopify Products CSV format needed for safe import.'
+    );
+  }
+  if (hasShopifyImageFields && hasNonPublicImageUrls) {
+    safetyIssues.push(
+      'Some image values are not public http/https URLs. Shopify CSV imports need publicly reachable image URLs, preferably from a Shopify export.'
+    );
+  }
+
+  const source: CsvSource | undefined =
     altIndex >= 0
       ? {
           headers,
           dataRows,
           altIndex,
+          importReady,
+          safetyIssues,
         }
       : undefined;
 
@@ -311,10 +356,7 @@ function buildAuditCsv(rows: ImageRow[]) {
   ].join('\n');
 }
 
-function buildShopifyCsv(
-  source: CsvAuditResult['source'],
-  rows: ImageRow[]
-) {
+function buildShopifyCsv(source: CsvSource | undefined, rows: ImageRow[]) {
   if (!source) {
     return buildAuditCsv(rows);
   }
@@ -333,17 +375,11 @@ function buildShopifyCsv(
   ].join('\n');
 }
 
-function isShopifyReadyCsv(source?: CsvAuditResult['source']) {
+function isShopifyReadyCsv(source?: CsvSource) {
   if (!source) {
     return false;
   }
-  const headers = source.headers.map(normalizeHeader);
-  return (
-    headers.includes('handle') &&
-    headers.includes('title') &&
-    headers.includes('image_src') &&
-    headers.includes('image_alt_text')
-  );
+  return source.importReady;
 }
 
 function normalizeStoreUrl(value: string) {
@@ -412,6 +448,7 @@ export function ImageSeoAuditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasShopifyReadyCsv = isShopifyReadyCsv(csvSource);
   const hasRemainingProducts = remainingProducts > 0;
+  const csvSafetyIssues = csvSource?.safetyIssues ?? [];
 
   const stats = useMemo(() => {
     const total = rows.length;
@@ -699,11 +736,11 @@ export function ImageSeoAuditor() {
               aria-label="CSV input"
             />
             <p className="text-sm leading-6 text-muted-foreground">
-              Upload the Products CSV exported from Shopify, or paste columns
-              like Handle, Title, Image Src, and Image Alt Text. The sample is
-              only a format guide; use Store URL mode or your own Shopify export
-              for a real test. Free CSV checks only update the first 5 products
-              and preserve the original CSV shape for safer import.
+              Upload the full Products CSV exported from Shopify Admin. Keep
+              every option, variant, image, and market column in place; handmade
+              four-column CSVs are audit-only and will not be treated as safe
+              Shopify imports. Free CSV checks only update the first 5 products
+              and preserve the original CSV shape.
             </p>
           </div>
         )}
@@ -803,6 +840,31 @@ export function ImageSeoAuditor() {
                         remainingProducts === 1 ? '' : 's'
                       } for a paid full-catalog cleanup.`
                     : ' and is ready for a careful Shopify import test.'}
+                </p>
+              ) : null}
+              {csvSafetyIssues.length > 0 ? (
+                <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm leading-6 text-muted-foreground">
+                  <div className="flex items-center gap-2 font-medium text-amber-900">
+                    <TriangleAlert className="size-4" />
+                    Audit-only CSV detected
+                  </div>
+                  <ul className="mt-2 list-disc space-y-1 pl-5">
+                    {csvSafetyIssues.map((issue) => (
+                      <li key={issue}>{issue}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-2">
+                    For an import-ready file, export Products from Shopify,
+                    upload that full CSV here, and do not delete the option or
+                    variant columns before importing the cleaned file.
+                  </p>
+                </div>
+              ) : null}
+              {hasShopifyReadyCsv ? (
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Shopify import tip: select Overwrite products with matching
+                  handles only for this cleaned copy, then review Shopify&apos;s
+                  preview before clicking Import products.
                 </p>
               ) : null}
             </div>
