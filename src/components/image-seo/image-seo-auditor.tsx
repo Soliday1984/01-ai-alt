@@ -67,6 +67,7 @@ black-running-shoes,Black Running Shoes,black-running-shoes-side.jpg,Black runni
 leather-tote-bag,Leather Tote Bag,leather-tote-bag.jpg,`;
 const leadEmail = process.env.NEXT_PUBLIC_LEAD_EMAIL ?? 'hello@imageseofix.com';
 const paymentLink = process.env.NEXT_PUBLIC_PAYMENT_LINK ?? '';
+const selfServeEnabled = process.env.NEXT_PUBLIC_SELF_SERVE_ENABLED === 'true';
 const freeProductLimit = 5;
 const starterCleanupPrice = '$19';
 const starterCleanupScope = 'up to 100 product images';
@@ -937,7 +938,7 @@ export function ImageSeoAuditor() {
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <Button asChild size="sm">
                   <a
-                    href="#lead"
+                    href={selfServeEnabled ? '/self-serve' : '#lead'}
                     onClick={() =>
                       trackEvent('full_store_fix_cta_click', {
                         mode,
@@ -947,7 +948,7 @@ export function ImageSeoAuditor() {
                       })
                     }
                   >
-                    Request full-store fix
+                    {selfServeEnabled ? 'Upload full CSV' : 'Request full-store fix'}
                   </a>
                 </Button>
                 {paymentLink ? (

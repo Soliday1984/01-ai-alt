@@ -6,9 +6,9 @@ updates.
 
 The first version is intentionally narrow and safe: a free browser-based CSV
 audit tool plus SEO landing pages around Shopify alt text, bulk alt text
-generation, and image SEO workflows. Paid plans are planned around private
-batch processing, saved history, agency workspaces, and direct Shopify
-import/export after traffic is validated.
+generation, and image SEO workflows. The self-serve paid beta adds server-side
+CSV cleanup jobs, Stripe Checkout, and a paid download link for the cleaned
+Shopify CSV.
 
 ## Current MVP
 
@@ -16,10 +16,14 @@ import/export after traffic is validated.
 - Missing, too-short, too-long, and generic alt text detection
 - Product-aware suggested alt text
 - CSV export for review or store workflows
+- Self-serve CSV cleanup page at `/self-serve`
+- Cloudflare D1 job metadata and R2 CSV storage once bindings are configured
+- Stripe Checkout Session unlock for the cleaned CSV download
 - Optional external Payment Link CTA for manual cleanup
 - SEO landing page at `/shopify-alt-text-generator`
 - Static SEO pages for bulk alt text and image SEO long-tail queries
-- No public API, auth, server-side file upload, or AI endpoint in the launch build
+- No full auth, public API, direct Shopify write access, or AI image endpoint in
+  the launch build
 
 ## Development
 
@@ -39,11 +43,15 @@ pnpm build
 
 ## Launch Guardrails
 
-- The MVP runs client-side in the browser.
+- The free audit runs client-side in the browser.
+- The self-serve paid flow must stay behind `NEXT_PUBLIC_SELF_SERVE_ENABLED`
+  until D1, R2, and Stripe secrets are configured.
 - `/api/`, `/admin/`, `/dashboard/`, `/settings/`, and `/auth/` return 404.
-- Real AI generation, direct Shopify import, custom Stripe checkout, and file
-  storage stay disabled until authentication, rate limits, caching, and spend
-  controls are configured. The current paid path uses Stripe Payment Link or a
-  manual payment link request.
-- Submit `https://01-ai-alt.vercel.app/sitemap.xml` to Google Search Console
-  after deployment.
+- Real AI generation, direct Shopify import, and full account history stay
+  disabled until authentication, rate limits, caching, and spend controls are
+  configured.
+- Submit `https://imageseofix.com/sitemap.xml` to Google Search Console after
+  deployment.
+
+See `docs/self-serve-saas-v1.md` for the Cloudflare D1, R2, and Stripe setup
+runbook.

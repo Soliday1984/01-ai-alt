@@ -119,6 +119,8 @@ const seoPages = [
   { title: 'WooCommerce alt text generator', href: '/woocommerce-alt-text-generator' },
 ];
 
+const selfServeEnabled = process.env.NEXT_PUBLIC_SELF_SERVE_ENABLED === 'true';
+
 const pricingPlans = [
   {
     icon: WandSparkles,
@@ -131,11 +133,13 @@ const pricingPlans = [
   },
   {
     icon: Mail,
-    name: 'Private cleanup',
+    name: selfServeEnabled ? 'Self-serve cleanup' : 'Private cleanup',
     price: '$19',
-    body: 'Starter manual cleanup for up to 100 product images using your official Shopify Products CSV.',
-    cta: 'Start cleanup',
-    href: '/#lead',
+    body: selfServeEnabled
+      ? 'Upload your official Shopify Products CSV, pay once, and download a cleaned file for up to 100 product images.'
+      : 'Starter manual cleanup for up to 100 product images using your official Shopify Products CSV.',
+    cta: selfServeEnabled ? 'Upload CSV' : 'Start cleanup',
+    href: selfServeEnabled ? '/self-serve' : '/#lead',
     features: ['Up to 100 product images', 'Shopify-ready CSV', 'No store login needed'],
   },
   {
