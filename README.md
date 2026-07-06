@@ -16,9 +16,10 @@ import/export after traffic is validated.
 - Missing, too-short, too-long, and generic alt text detection
 - Product-aware suggested alt text
 - CSV export for review or store workflows
+- Optional external Payment Link CTA for manual cleanup
 - SEO landing page at `/shopify-alt-text-generator`
 - Static SEO pages for bulk alt text and image SEO long-tail queries
-- No public API, auth, upload, Stripe, or AI endpoint in the launch build
+- No public API, auth, server-side file upload, or AI endpoint in the launch build
 
 ## Development
 
@@ -40,8 +41,9 @@ pnpm build
 
 - The MVP runs client-side in the browser.
 - `/api/`, `/admin/`, `/dashboard/`, `/settings/`, and `/auth/` return 404.
-- Real AI generation, direct Shopify import, Stripe checkout, and file storage
-  stay disabled until authentication, rate limits, caching, and Vercel spend
-  controls are configured.
+- Real AI generation, direct Shopify import, custom Stripe checkout, and file
+  storage stay disabled until authentication, rate limits, caching, and spend
+  controls are configured. The current paid path uses Stripe Payment Link or a
+  manual payment link request.
 - Submit `https://01-ai-alt.vercel.app/sitemap.xml` to Google Search Console
   after deployment.

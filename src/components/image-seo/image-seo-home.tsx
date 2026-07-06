@@ -132,11 +132,11 @@ const pricingPlans = [
   {
     icon: Mail,
     name: 'Private cleanup',
-    price: '$19+',
-    body: 'Send the audit summary and get a quote for a one-time batch cleanup workflow.',
-    cta: 'Request audit',
+    price: '$19',
+    body: 'Starter manual cleanup for up to 100 product images using your official Shopify Products CSV.',
+    cta: 'Start cleanup',
     href: '/#lead',
-    features: ['Best for 100+ images', 'Human review option', 'Shopify-ready CSV'],
+    features: ['Up to 100 product images', 'Shopify-ready CSV', 'No store login needed'],
   },
   {
     icon: Store,
@@ -343,8 +343,8 @@ export function ImageSeoHome() {
           </h2>
           <p className="mt-4 text-muted-foreground">
             The free tier proves the issue on 5 products. The $1k MRR path is
-            35 Growth customers at $29/month, or 13 Agency customers at
-            $79/month after larger scans are enabled.
+            a mix of $19 starter cleanups, 35 Growth customers at $29/month, or
+            13 Agency customers at $79/month after larger scans are enabled.
           </p>
         </div>
         <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">

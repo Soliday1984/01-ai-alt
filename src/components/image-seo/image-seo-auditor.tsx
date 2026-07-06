@@ -68,6 +68,14 @@ leather-tote-bag,Leather Tote Bag,leather-tote-bag.jpg,`;
 const leadEmail = process.env.NEXT_PUBLIC_LEAD_EMAIL ?? 'hello@imageseofix.com';
 const paymentLink = process.env.NEXT_PUBLIC_PAYMENT_LINK ?? '';
 const freeProductLimit = 5;
+const starterCleanupPrice = '$19';
+const starterCleanupScope = 'up to 100 product images';
+
+const cleanupDeliverables = [
+  'Cleaned Shopify Products CSV with reviewed Image Alt Text',
+  'Import notes for Shopify preview and matching handles overwrite',
+  'Short issue summary so the merchant knows what changed',
+];
 
 function parseCsv(input: string): string[][] {
   const rows: string[][] = [];
@@ -604,6 +612,37 @@ export function ImageSeoAuditor() {
     }
   }
 
+  function buildCleanupRequestHref(intent: 'starter' | 'quote') {
+    const subject =
+      intent === 'starter'
+        ? 'Start $19 Shopify alt text cleanup'
+        : 'Full Shopify alt text cleanup quote';
+    const body = [
+      'Hi ImageSEOFix,',
+      '',
+      intent === 'starter'
+        ? `I want the ${starterCleanupPrice} Starter cleanup for ${starterCleanupScope}.`
+        : 'I want a full-store Shopify image alt text cleanup quote.',
+      '',
+      `Reply email: ${email.trim() || 'Please reply to this email'}`,
+      `Store URL: ${storeUrl.trim() || scanStoreUrl.trim() || 'Not provided yet'}`,
+      'I will send the full Shopify Products CSV export after payment or scope confirmation.',
+      'Delivery needed: cleaned import-ready CSV, change summary, and Shopify import notes.',
+      '',
+      buildAuditSummary(rows, mode, storeUrl || scanStoreUrl, {
+        checked: scannedProducts,
+        total: totalProducts,
+        remaining: remainingProducts,
+      }),
+      '',
+      'Please send the payment link and next step.',
+    ].join('\n');
+
+    return `mailto:${leadEmail}?subject=${encodeURIComponent(
+      subject
+    )}&body=${encodeURIComponent(body)}`;
+  }
+
   function requestPrivateAudit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -631,8 +670,10 @@ export function ImageSeoAuditor() {
       '',
       `Reply email: ${email.trim()}`,
       `Store URL: ${storeUrl.trim() || 'Not provided yet'}`,
+      `Starter package: ${starterCleanupPrice} for ${starterCleanupScope}`,
       'Preferred payment: Stripe, PayPal, or invoice',
       'Catalog size: Please estimate after reviewing the audit summary and Shopify Products CSV.',
+      'Expected delivery: cleaned Shopify Products CSV, change summary, and Shopify import notes.',
       '',
       buildAuditSummary(rows, mode, storeUrl, {
         checked: scannedProducts,
@@ -871,18 +912,28 @@ export function ImageSeoAuditor() {
             <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
               <div className="flex items-center gap-2 text-sm font-medium">
                 <CreditCard className="size-4 text-emerald-700" />
-                Want the full store fixed?
+                Start a paid cleanup
               </div>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                The free scan checks the first {freeProductLimit} products.
+                The free scan checks the first {freeProductLimit} products. The
+                Starter cleanup is {starterCleanupPrice} for{' '}
+                {starterCleanupScope}.
                 {hasRemainingProducts
                   ? ` This file has ${remainingProducts} more product${
                       remainingProducts === 1 ? '' : 's'
                     } waiting for full cleanup.`
                   : ' For larger catalogs, send the audit summary and your Shopify Products CSV.'}{' '}
-                We return a Shopify-ready CSV with reviewed Image Alt Text for
-                all product images.
+                We work from your official Shopify Products CSV and return a
+                cleaned CSV you can test in Shopify preview.
               </p>
+              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                {cleanupDeliverables.map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-700" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <Button asChild size="sm">
                   <a
@@ -912,13 +963,28 @@ export function ImageSeoAuditor() {
                         })
                       }
                     >
-                      Reserve cleanup slot
+                      Pay {starterCleanupPrice} starter cleanup
                     </a>
                   </Button>
-                ) : null}
+                ) : (
+                  <Button asChild size="sm" variant="outline">
+                    <a
+                      href={buildCleanupRequestHref('starter')}
+                      onClick={() =>
+                        trackEvent('full_store_fix_cta_click', {
+                          mode,
+                          imageRows: rows.length,
+                          issueCount: rows.filter((row) => row.issues.length > 0)
+                            .length,
+                        })
+                      }
+                    >
+                      Request {starterCleanupPrice} payment link
+                    </a>
+                  </Button>
+                )}
                 <span className="text-xs leading-5 text-muted-foreground">
-                  Validation offer: manual Shopify CSV cleanup, paid after scope
-                  confirmation.
+                  No app install. No Shopify login. Official CSV export only.
                 </span>
               </div>
             </div>
@@ -1010,9 +1076,10 @@ export function ImageSeoAuditor() {
             Get the full store fixed
           </div>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Send the current audit summary and request a fixed-price cleanup for
-            your full Shopify Products CSV. We review the file, update Image Alt
-            Text, and send back an import-ready CSV.
+            Send the current audit summary and request the {starterCleanupPrice}{' '}
+            Starter cleanup for {starterCleanupScope}, or ask for a fixed quote
+            on larger catalogs. We review the file, update Image Alt Text, and
+            send back an import-ready CSV.
           </p>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -1064,14 +1131,21 @@ export function ImageSeoAuditor() {
                   }
                 >
                   <CreditCard className="size-4" />
-                  Pay for manual cleanup
+                  Pay {starterCleanupPrice} starter cleanup
                 </a>
               </Button>
-            ) : null}
+            ) : (
+              <Button asChild variant="outline">
+                <a href={buildCleanupRequestHref('starter')}>
+                  <CreditCard className="size-4" />
+                  Request payment link
+                </a>
+              </Button>
+            )}
             <p className="text-xs leading-5 text-muted-foreground">
               No login yet. Your CSV stays in the browser unless you choose to
-              email the summary. Payment can be handled by Stripe, Gumroad, or
-              PayPal after we confirm the catalog size.
+              email the summary. Use Stripe Payment Link when available; larger
+              catalogs get a quote before payment.
             </p>
           </div>
           {leadStatus ? (
