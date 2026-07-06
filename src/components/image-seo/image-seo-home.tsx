@@ -59,6 +59,29 @@ const bestPracticeSteps = [
   },
 ];
 
+const csvDeliverySteps = [
+  {
+    title: 'Export Products CSV',
+    body: 'In Shopify Admin, go to Products, export the current product CSV, and keep the original file as a backup.',
+  },
+  {
+    title: 'Upload to ImageSEOFix',
+    body: 'Use the CSV fallback and upload the Shopify file. The free preview checks the first 5 products and preserves the original columns.',
+  },
+  {
+    title: 'Review the preview',
+    body: 'Check missing, generic, short, or long alt text. Download the preview CSV only when the suggestions look safe.',
+  },
+  {
+    title: 'Request full cleanup',
+    body: 'For the full catalog, send the audit summary and CSV. The paid workflow returns a Shopify-ready CSV with Image Alt Text updated.',
+  },
+  {
+    title: 'Import carefully',
+    body: 'Import the cleaned CSV back into Shopify, spot-check a few products, and keep the backup until the catalog looks correct.',
+  },
+];
+
 const exampleRows = [
   {
     image: 'foundation-shade-210.png',
@@ -279,6 +302,35 @@ export function ImageSeoHome() {
               </a>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section id="shopify-csv-workflow" className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 py-16 md:px-6 lg:px-8">
+        <div className="max-w-2xl">
+          <p className="text-sm font-medium uppercase text-primary">
+            Shopify CSV delivery
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold">
+            A safe path from audit to import-ready CSV
+          </h2>
+          <p className="mt-4 text-muted-foreground">
+            ImageSEOFix starts with a free preview, then turns a real Shopify
+            Products CSV into a file a merchant can review and import. This is
+            the paid delivery path before a full Shopify app is necessary.
+          </p>
+        </div>
+        <div className="mt-10 grid gap-4 md:grid-cols-5">
+          {csvDeliverySteps.map((step, index) => (
+            <div key={step.title} className="rounded-lg border bg-background p-5">
+              <span className="flex size-8 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">
+                {index + 1}
+              </span>
+              <h3 className="mt-4 text-base font-semibold">{step.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                {step.body}
+              </p>
+            </div>
+          ))}
         </div>
       </section>
 

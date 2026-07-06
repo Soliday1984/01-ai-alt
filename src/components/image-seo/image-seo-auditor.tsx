@@ -34,6 +34,9 @@ type ImageRow = {
 type CsvAuditResult = {
   rows: ImageRow[];
   productCount: number;
+  totalProductCount: number;
+  checkedProductCount: number;
+  remainingProductCount: number;
   source?: {
     headers: string[];
     dataRows: string[][];
@@ -52,12 +55,12 @@ type StoreScanResponse = {
   }>;
 };
 
-const sampleCsv = `image_url,alt,title
-demo-blue-linen-shirt-front.jpg,,Blue Linen Shirt
-demo-walnut-desk-lamp.png,lamp,Walnut Desk Lamp
-demo-ceramic-coffee-mug-main.jpg,photo,Ceramic Coffee Mug
-demo-black-running-shoes-side.jpg,Black running shoes side view,Black Running Shoes
-demo-leather-tote-bag.jpg,,Leather Tote Bag`;
+const sampleCsv = `Handle,Title,Image Src,Image Alt Text
+blue-linen-shirt,Blue Linen Shirt,blue-linen-shirt-front.jpg,
+walnut-desk-lamp,Walnut Desk Lamp,walnut-desk-lamp.png,lamp
+ceramic-coffee-mug,Ceramic Coffee Mug,ceramic-coffee-mug-main.jpg,photo
+black-running-shoes,Black Running Shoes,black-running-shoes-side.jpg,Black running shoes side view
+leather-tote-bag,Leather Tote Bag,leather-tote-bag.jpg,`;
 const leadEmail = process.env.NEXT_PUBLIC_LEAD_EMAIL ?? 'hello@imageseofix.com';
 const paymentLink = process.env.NEXT_PUBLIC_PAYMENT_LINK ?? '';
 const freeProductLimit = 5;
@@ -207,7 +210,13 @@ function findHeaderIndex(headers: string[], options: string[]) {
 function buildRowsFromCsv(input: string): CsvAuditResult {
   const parsedRows = parseCsv(input);
   if (parsedRows.length === 0) {
-    return { rows: [], productCount: 0 };
+    return {
+      rows: [],
+      productCount: 0,
+      totalProductCount: 0,
+      checkedProductCount: 0,
+      remainingProductCount: 0,
+    };
   }
 
   const headers = parsedRows[0];
@@ -270,6 +279,8 @@ function buildRowsFromCsv(input: string): CsvAuditResult {
     auditedRows.push({ ...auditedRow, csvRowIndex: rowIndex });
   });
 
+  const checkedProductCount = Math.min(productOrder.length, freeProductLimit);
+
   const source =
     altIndex >= 0
       ? {
@@ -281,7 +292,10 @@ function buildRowsFromCsv(input: string): CsvAuditResult {
 
   return {
     rows: auditedRows,
-    productCount: Math.min(productOrder.length, freeProductLimit),
+    productCount: checkedProductCount,
+    totalProductCount: productOrder.length,
+    checkedProductCount,
+    remainingProductCount: Math.max(productOrder.length - checkedProductCount, 0),
     source,
   };
 }
@@ -341,7 +355,16 @@ function normalizeStoreUrl(value: string) {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
-function buildAuditSummary(rows: ImageRow[], mode: InputMode, storeUrl: string) {
+function buildAuditSummary(
+  rows: ImageRow[],
+  mode: InputMode,
+  storeUrl: string,
+  productCounts: {
+    checked: number;
+    total: number;
+    remaining: number;
+  }
+) {
   const total = rows.length;
   const affected = rows.filter((row) => row.issues.length > 0).length;
   const missing = rows.filter((row) =>
@@ -359,6 +382,9 @@ function buildAuditSummary(rows: ImageRow[], mode: InputMode, storeUrl: string) 
   return [
     `Audit mode: ${mode === 'store' ? 'Store URL scan' : 'Shopify CSV'}`,
     `Store URL: ${storeUrl.trim() || 'Not provided yet'}`,
+    `Products checked: ${productCounts.checked}`,
+    `Products detected: ${productCounts.total}`,
+    `Products remaining after free preview: ${productCounts.remaining}`,
     `Images audited: ${total}`,
     `Free product limit: ${freeProductLimit}`,
     `Images with issues: ${affected}`,
@@ -381,8 +407,11 @@ export function ImageSeoAuditor() {
   const [leadStatus, setLeadStatus] = useState('');
   const [copiedRow, setCopiedRow] = useState('');
   const [csvSource, setCsvSource] = useState<CsvAuditResult['source']>();
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [remainingProducts, setRemainingProducts] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasShopifyReadyCsv = isShopifyReadyCsv(csvSource);
+  const hasRemainingProducts = remainingProducts > 0;
 
   const stats = useMemo(() => {
     const total = rows.length;
@@ -404,11 +433,15 @@ export function ImageSeoAuditor() {
     window.setTimeout(() => {
       const result = buildRowsFromCsv(nextCsv);
       setRows(result.rows);
-      setScannedProducts(result.productCount);
+      setScannedProducts(result.checkedProductCount);
+      setTotalProducts(result.totalProductCount);
+      setRemainingProducts(result.remainingProductCount);
       setCsvSource(result.source);
       trackEvent('csv_generate', {
         imageRows: result.rows.length,
         issueCount: result.rows.filter((row) => row.issues.length > 0).length,
+        totalProducts: result.totalProductCount,
+        checkedProducts: result.checkedProductCount,
       });
       setIsWorking(false);
     }, 180);
@@ -425,6 +458,8 @@ export function ImageSeoAuditor() {
     setIsWorking(true);
     setScanError('');
     setScannedProducts(0);
+    setTotalProducts(0);
+    setRemainingProducts(0);
     trackEvent('store_scan_submit', { mode: 'store' });
 
     try {
@@ -447,21 +482,31 @@ export function ImageSeoAuditor() {
       setCsvSource(undefined);
       setStoreUrl(result.storeUrl ?? normalizedStoreUrl);
       setScannedProducts(result.scannedProducts ?? 0);
+      setTotalProducts(result.scannedProducts ?? 0);
+      setRemainingProducts(0);
       trackEvent('store_scan_success', {
         productCount: result.scannedProducts ?? 0,
         imageRows: result.rows?.length ?? 0,
       });
     } catch (error) {
+      const rawMessage =
+        error instanceof Error
+          ? error.message
+          : 'Unable to scan this store right now.';
+      const friendlyMessage =
+        /fetch failed|No public Shopify product pages|password/i.test(rawMessage)
+          ? 'This storefront could not be scanned from a public URL. If it is password-protected or unpublished, export Products CSV from Shopify and use CSV fallback.'
+          : rawMessage;
+
       setRows([]);
       setCsvSource(undefined);
       setStoreUrl(normalizedStoreUrl);
-      setScanError(
-        error instanceof Error
-          ? error.message
-          : 'Unable to scan this store right now.'
-      );
+      setScannedProducts(0);
+      setTotalProducts(0);
+      setRemainingProducts(0);
+      setScanError(friendlyMessage);
       trackEvent('store_scan_error', {
-        reason: error instanceof Error ? error.message.slice(0, 80) : 'unknown',
+        reason: rawMessage.slice(0, 80),
       });
     } finally {
       setIsWorking(false);
@@ -499,7 +544,9 @@ export function ImageSeoAuditor() {
     const link = document.createElement('a');
     link.href = url;
     link.download = hasShopifyReadyCsv
-      ? 'imageseofix-shopify-products-cleaned.csv'
+      ? hasRemainingProducts
+        ? 'imageseofix-shopify-preview-5-products.csv'
+        : 'imageseofix-shopify-products-cleaned.csv'
       : 'imageseofix-alt-text-audit.csv';
     link.click();
     URL.revokeObjectURL(url);
@@ -550,7 +597,11 @@ export function ImageSeoAuditor() {
       'Preferred payment: Stripe, PayPal, or invoice',
       'Catalog size: Please estimate after reviewing the audit summary and Shopify Products CSV.',
       '',
-      buildAuditSummary(rows, mode, storeUrl),
+      buildAuditSummary(rows, mode, storeUrl, {
+        checked: scannedProducts,
+        total: totalProducts,
+        remaining: remainingProducts,
+      }),
       '',
       'Please send the recommended next step, fixed price, and payment link.',
     ].join('\n');
@@ -630,7 +681,8 @@ export function ImageSeoAuditor() {
               keep the service fast and low-cost. Larger stores unlock more
               products with Growth or Agency plans. The scanner reads public
               storefront HTML only; it does not download images or write to
-              Shopify.
+              Shopify. If your store is password-protected or unpublished, export
+              Products CSV from Shopify and use CSV fallback.
             </div>
             {scanError ? (
               <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm leading-6 text-destructive">
@@ -648,9 +700,10 @@ export function ImageSeoAuditor() {
             />
             <p className="text-sm leading-6 text-muted-foreground">
               Upload the Products CSV exported from Shopify, or paste columns
-              like Handle, Title, Image Src, and Image Alt Text. Free CSV checks
-              only use the first 5 products and preserve the original CSV shape
-              for safer import.
+              like Handle, Title, Image Src, and Image Alt Text. The sample is
+              only a format guide; use Store URL mode or your own Shopify export
+              for a real test. Free CSV checks only update the first 5 products
+              and preserve the original CSV shape for safer import.
             </p>
           </div>
         )}
@@ -683,7 +736,11 @@ export function ImageSeoAuditor() {
             disabled={rows.length === 0}
           >
             <Download className="size-4" />
-            {hasShopifyReadyCsv ? 'Export Shopify CSV' : 'Export CSV'}
+            {hasShopifyReadyCsv
+              ? hasRemainingProducts
+                ? 'Export 5-product preview'
+                : 'Export Shopify CSV'
+              : 'Export audit CSV'}
           </Button>
           <input
             ref={fileInputRef}
@@ -698,8 +755,13 @@ export function ImageSeoAuditor() {
       <div className="min-w-0 space-y-5">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="border-border bg-muted/30 rounded-lg border p-4">
-            <p className="text-sm text-muted-foreground">Products</p>
+            <p className="text-sm text-muted-foreground">Products checked</p>
             <p className="mt-2 text-3xl font-semibold">{scannedProducts}</p>
+            {totalProducts > scannedProducts ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {totalProducts} detected
+              </p>
+            ) : null}
           </div>
           <div className="border-border bg-muted/30 rounded-lg border p-4">
             <p className="text-sm text-muted-foreground">Images</p>
@@ -710,8 +772,11 @@ export function ImageSeoAuditor() {
             <p className="mt-2 text-3xl font-semibold">{stats.affected}</p>
           </div>
           <div className="border-border bg-muted/30 rounded-lg border p-4">
-            <p className="text-sm text-muted-foreground">Free cap</p>
-            <p className="mt-2 text-3xl font-semibold">{freeProductLimit}</p>
+            <p className="text-sm text-muted-foreground">Remaining</p>
+            <p className="mt-2 text-3xl font-semibold">{remainingProducts}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              after free preview
+            </p>
           </div>
         </div>
 
@@ -720,14 +785,26 @@ export function ImageSeoAuditor() {
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
               <div className="flex items-center gap-2 text-sm font-medium">
                 <CheckCircle2 className="size-4 text-primary" />
-                Next step: review, copy, or export
+                Next step: review, copy, or export preview
               </div>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Use Copy for a few manual fixes in Shopify Admin, or export a
-                Shopify CSV that keeps your original columns and updates Image Alt
-                Text for the checked rows. Keep a backup of your original Shopify
-                product CSV before importing changes.
+                Shopify CSV preview that keeps your original columns and updates
+                Image Alt Text for the checked rows. Keep a backup of your
+                original Shopify product CSV before importing changes.
               </p>
+              {hasShopifyReadyCsv ? (
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Shopify-ready CSV detected. This free export updates{' '}
+                  {scannedProducts} product
+                  {scannedProducts === 1 ? '' : 's'}
+                  {hasRemainingProducts
+                    ? ` and leaves ${remainingProducts} product${
+                        remainingProducts === 1 ? '' : 's'
+                      } for a paid full-catalog cleanup.`
+                    : ' and is ready for a careful Shopify import test.'}
+                </p>
+              ) : null}
             </div>
             <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
               <div className="flex items-center gap-2 text-sm font-medium">
@@ -735,10 +812,14 @@ export function ImageSeoAuditor() {
                 Want the full store fixed?
               </div>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                The free scan checks the first {freeProductLimit} products. For
-                the full catalog, send the audit summary and your Shopify Products
-                CSV. We return a Shopify-ready CSV with reviewed Image Alt Text
-                for all product images.
+                The free scan checks the first {freeProductLimit} products.
+                {hasRemainingProducts
+                  ? ` This file has ${remainingProducts} more product${
+                      remainingProducts === 1 ? '' : 's'
+                    } waiting for full cleanup.`
+                  : ' For larger catalogs, send the audit summary and your Shopify Products CSV.'}{' '}
+                We return a Shopify-ready CSV with reviewed Image Alt Text for
+                all product images.
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <Button asChild size="sm">
@@ -849,9 +930,11 @@ export function ImageSeoAuditor() {
             Upgrade path
           </div>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Free scans show the first {freeProductLimit} products. Growth unlocks
-            up to 100 products per scan, while Agency is for multi-store cleanup
-            and human-reviewed CSV delivery.
+            Free scans show the first {freeProductLimit} products. The paid
+            delivery path is a reviewed Shopify Products CSV that keeps your
+            original rows and updates Image Alt Text for the full catalog.
+            Growth later unlocks larger self-serve scans, while Agency is for
+            multi-store cleanup and human-reviewed delivery.
           </p>
         </div>
 
