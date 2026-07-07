@@ -24,10 +24,12 @@ type R2BucketBinding = {
 type SelfServeEnv = CloudflareEnv & {
   IMAGESEOFIX_DB?: D1DatabaseBinding;
   IMAGESEOFIX_UPLOADS?: R2BucketBinding;
+  SELF_SERVE_ENABLED?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   STRIPE_STARTER_PRICE_ID?: string;
   NEXT_PUBLIC_SITE_URL?: string;
+  NEXT_PUBLIC_SELF_SERVE_ENABLED?: string;
 };
 
 export type SelfServeBindings = {
@@ -130,6 +132,23 @@ export async function getSelfServeBindings(): Promise<SelfServeBindings> {
     uploads: env.IMAGESEOFIX_UPLOADS,
     env,
   };
+}
+
+function isTrueFlag(value: unknown) {
+  return typeof value === 'string' && value.trim().toLowerCase() === 'true';
+}
+
+export function assertSelfServeEnabled(env: SelfServeEnv) {
+  const enabled =
+    isTrueFlag(env.SELF_SERVE_ENABLED) ||
+    isTrueFlag(process.env.SELF_SERVE_ENABLED);
+
+  if (!enabled) {
+    throw new SelfServeError(
+      'Self-serve CSV cleanup is not accepting uploads yet. Use the free audit or contact support for the paid cleanup.',
+      403
+    );
+  }
 }
 
 export function publicSiteUrl(env: SelfServeEnv, request?: Request) {

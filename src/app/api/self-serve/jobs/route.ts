@@ -1,5 +1,6 @@
 import { CsvValidationError, processShopifyCsv } from '@/lib/self-serve/csv';
 import {
+  assertSelfServeEnabled,
   createAccessToken,
   createJobId,
   getSelfServeBindings,
@@ -12,6 +13,7 @@ import {
 export const dynamic = 'force-dynamic';
 
 const maxCsvBytes = 2_000_000;
+const maxUploadRequestBytes = maxCsvBytes + 100_000;
 
 function normalizeEmail(value: unknown) {
   if (typeof value !== 'string') {
@@ -58,13 +60,31 @@ function normalizeCsv(value: unknown) {
   return csv;
 }
 
+function rejectOversizedRequest(request: Request) {
+  const contentLength = request.headers.get('content-length');
+  if (!contentLength) {
+    return;
+  }
+
+  const bytes = Number(contentLength);
+  if (Number.isFinite(bytes) && bytes > maxUploadRequestBytes) {
+    throw new CsvValidationError(
+      'The upload request is larger than the 2 MB self-serve beta limit.'
+    );
+  }
+}
+
 export async function POST(request: Request) {
   try {
+    const { db, uploads, env } = await getSelfServeBindings();
+
+    assertSelfServeEnabled(env);
+    rejectOversizedRequest(request);
+
     const body = await request.json();
     const email = normalizeEmail(body?.email);
     const storeUrl = normalizeStoreUrl(body?.storeUrl);
     const csv = normalizeCsv(body?.csv);
-    const { db, uploads } = await getSelfServeBindings();
     const result = processShopifyCsv(csv, 100);
     const jobId = createJobId();
     const token = createAccessToken();

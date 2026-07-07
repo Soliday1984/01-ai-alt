@@ -123,10 +123,13 @@ Set public build variables in GitHub Actions or Cloudflare deployment environmen
 
 ```text
 NEXT_PUBLIC_SITE_URL=https://imageseofix.com
+SELF_SERVE_ENABLED=true
 NEXT_PUBLIC_SELF_SERVE_ENABLED=true
 ```
 
-Keep `NEXT_PUBLIC_SELF_SERVE_ENABLED=false` or unset until D1, R2, and Stripe are all live.
+Keep `SELF_SERVE_ENABLED=false` and `NEXT_PUBLIC_SELF_SERVE_ENABLED=false`, or leave them unset, until D1, R2, Stripe, the webhook, and abuse protection are ready. The server blocks job creation, R2 writes, D1 writes, and checkout unless `SELF_SERVE_ENABLED` is explicitly `true`.
+
+`NEXT_PUBLIC_SELF_SERVE_ENABLED` only controls whether the UI shows the self-serve entry. `SELF_SERVE_ENABLED` is the server-side write gate and must be `true` before the API will create jobs, write R2/D1, or start checkout.
 
 ## Verification checklist
 

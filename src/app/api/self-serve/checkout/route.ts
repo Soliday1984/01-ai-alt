@@ -1,4 +1,5 @@
 import {
+  assertSelfServeEnabled,
   createCheckoutSession,
   getJob,
   getSelfServeBindings,
@@ -19,10 +20,13 @@ function readString(value: unknown, label: string) {
 
 export async function POST(request: Request) {
   try {
+    const { db, env } = await getSelfServeBindings();
+
+    assertSelfServeEnabled(env);
+
     const body = await request.json();
     const jobId = readString(body?.jobId, 'Job ID');
     const token = readString(body?.token, 'Job token');
-    const { db, env } = await getSelfServeBindings();
     const job = await getJob(db, jobId);
 
     await verifyJobToken(job, token);

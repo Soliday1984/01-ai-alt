@@ -23,9 +23,9 @@ webhook fulfillment, abuse protection, and production E2E are live.
 - [x] Stripe Checkout Session code exists for one-time `$19` payment.
 - [x] Stripe webhook endpoint added for automated paid-status fulfillment after
   checkout closes or the browser is abandoned.
-- [ ] Cloudflare D1 database created and bound as `IMAGESEOFIX_DB`.
-- [ ] Cloudflare R2 bucket created and bound as `IMAGESEOFIX_UPLOADS`.
-- [ ] Remote D1 migration applied: `migrations/0001_self_serve_jobs.sql`.
+- [x] Cloudflare D1 database created and bound as `IMAGESEOFIX_DB`.
+- [x] Cloudflare R2 bucket created and bound as `IMAGESEOFIX_UPLOADS`.
+- [x] Remote D1 migration applied: `migrations/0001_self_serve_jobs.sql`.
 - [ ] Cloudflare secrets configured:
   - `STRIPE_SECRET_KEY`
   - `STRIPE_WEBHOOK_SECRET`
@@ -45,12 +45,14 @@ webhook fulfillment, abuse protection, and production E2E are live.
 - [x] No paid AI/image-processing API in v1.
 - [x] Free public scan is capped at 5 products.
 - [x] CSV upload is capped at 2 MB.
+- [x] Server-side self-serve write gate blocks job creation, R2 writes, D1
+  writes, and checkout while `SELF_SERVE_ENABLED` is not explicitly `true`.
 - [ ] Cloudflare WAF rule protects `/api/self-serve/*` with rate limiting or
   Managed Challenge.
 - [ ] Turnstile added to job creation if upload abuse appears.
 - [ ] Cloudflare usage and billing alerts checked before traffic push.
-- [ ] Emergency rollback documented: set `NEXT_PUBLIC_SELF_SERVE_ENABLED=false`
-  and redeploy.
+- [x] Emergency rollback documented: set `SELF_SERVE_ENABLED=false` and
+  `NEXT_PUBLIC_SELF_SERVE_ENABLED=false`, then redeploy.
 
 ## P1 Fulfillment Quality
 

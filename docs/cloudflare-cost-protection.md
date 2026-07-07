@@ -7,12 +7,16 @@ Updated: 2026-06-06
 ImageSEOFix is low-cost by design:
 
 - No paid AI API is called on the server.
-- No database, queue, object storage, or email provider is bound to the Worker.
+- D1 and R2 are bound for the paid CSV workflow, but self-serve job creation is
+  blocked server-side unless `SELF_SERVE_ENABLED=true`.
+- The R2 bucket is private and is only accessed through token-checked API
+  routes; there is no public R2 bucket or public object URL.
 - Unknown `/api/*` probes, auth, dashboard, admin, and common scanner paths are
   blocked in middleware. The paid CSV workflow allows `/api/self-serve/*`.
 - The Worker is currently deployed on Cloudflare Workers Free plan.
 
-The main remaining risk is request volume against the Worker.
+The main remaining risks are request volume against the Worker and abusive CSV
+job creation after self-serve is enabled.
 
 ## Code-level controls
 
@@ -33,6 +37,19 @@ Configured in `src/middleware.ts`:
   `/api/self-serve/*` for the paid CSV workflow.
 - Return `404` for common scanner paths such as WordPress, PHP, dotfile, and repository probes.
 - Return `403` for obvious automated scanner user agents.
+
+Configured in the self-serve API:
+
+- `POST /api/self-serve/jobs` checks the server-side self-serve flag before
+  parsing the upload body or writing D1/R2.
+- `POST /api/self-serve/jobs` rejects upload requests with a declared body
+  larger than the beta limit before parsing JSON.
+- CSV payloads are capped at 2 MB.
+- Cleaned CSV downloads require a private job token and `payment_status='paid'`.
+- `POST /api/self-serve/checkout` is also behind the server-side self-serve
+  flag, so the paid loop can be paused without breaking existing paid downloads.
+- `NEXT_PUBLIC_SELF_SERVE_ENABLED` only controls UI visibility; it does not open
+  the D1/R2 write path by itself.
 
 Deployment smoke tests verify:
 
@@ -96,8 +113,10 @@ Tune the threshold only after checking real search crawler and user traffic.
 If traffic spikes unexpectedly:
 
 1. Confirm whether it is visible in Cloudflare Workers metrics.
-2. If it is abusive, temporarily set the Worker route/domain to a stricter WAF rule.
-3. If cost risk is immediate, disable the custom route or roll back DNS to the existing Vercel deployment.
-4. Keep the Worker code deployed but stop sending production traffic until rules are tightened.
+2. Immediately set `SELF_SERVE_ENABLED=false` and
+   `NEXT_PUBLIC_SELF_SERVE_ENABLED=false`, then redeploy.
+3. If it is abusive, temporarily set the Worker route/domain to a stricter WAF rule.
+4. If cost risk is immediate, disable the custom route or roll back DNS to the existing Vercel deployment.
+5. Keep the Worker code deployed but stop sending production traffic until rules are tightened.
 
-Do not add paid AI, image processing, R2 writes, queues, or external API calls until authentication, quotas, and per-user limits exist.
+Do not add paid AI, image processing, queues, or external API calls until authentication, quotas, and per-user limits exist. Keep R2 writes disabled by feature flag until Stripe fulfillment and WAF/rate limits are ready.

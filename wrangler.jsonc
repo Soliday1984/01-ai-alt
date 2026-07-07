@@ -19,6 +19,20 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "d1_databases": [
+    {
+      "binding": "IMAGESEOFIX_DB",
+      "database_name": "imageseofix",
+      "database_id": "035b488a-1326-44c7-8e69-dd810cae79f5",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "IMAGESEOFIX_UPLOADS",
+      "bucket_name": "imageseofix-uploads"
+    }
+  ],
   "observability": {
     "enabled": true
   }
