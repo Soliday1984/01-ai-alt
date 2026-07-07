@@ -5,7 +5,6 @@ on:
 
 permissions:
   contents: read
-  actions: write
 
 env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -38,8 +37,6 @@ jobs:
 
       - name: Create Turnstile widget and save keys
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -73,9 +70,31 @@ jobs:
           if [ -n "$EXISTING_SITEKEY" ]; then
             echo "A matching Turnstile widget already exists."
             echo "Sitekey: $EXISTING_SITEKEY"
-            gh variable set NEXT_PUBLIC_TURNSTILE_SITE_KEY --body "$EXISTING_SITEKEY"
-            echo "NEXT_PUBLIC_TURNSTILE_SITE_KEY updated."
-            echo "Existing widget secrets cannot be recovered from list output; no Worker secret was changed."
+
+            ROTATE_RESPONSE="$(curl -fsS \
+              "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/challenges/widgets/${EXISTING_SITEKEY}/rotate_secret" \
+              --request POST \
+              --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              --header "Content-Type: application/json")"
+
+            TURNSTILE_SECRET="$(node -e "
+              const payload = JSON.parse(process.argv[1]);
+              if (!payload.success) {
+                console.error(JSON.stringify(payload.errors || payload, null, 2));
+                process.exit(1);
+              }
+              const result = payload.result || {};
+              const secret = result.secret || result.secret_key;
+              if (!secret) {
+                console.error('Turnstile API did not return a rotated secret key.');
+                process.exit(1);
+              }
+              process.stdout.write(secret);
+            " "$ROTATE_RESPONSE")"
+
+            echo "::add-mask::$TURNSTILE_SECRET"
+            printf '%s' "$TURNSTILE_SECRET" | pnpm exec wrangler secret put TURNSTILE_SECRET_KEY
+            echo "TURNSTILE_SECRET_KEY rotated and saved to the Cloudflare Worker."
             exit 0
           fi
 
@@ -124,10 +143,8 @@ jobs:
           echo "Created Turnstile widget."
           echo "Sitekey: $SITEKEY"
 
-          gh variable set NEXT_PUBLIC_TURNSTILE_SITE_KEY --body "$SITEKEY"
           printf '%s' "$TURNSTILE_SECRET" | pnpm exec wrangler secret put TURNSTILE_SECRET_KEY
 
-          echo "NEXT_PUBLIC_TURNSTILE_SITE_KEY updated."
           echo "TURNSTILE_SECRET_KEY saved to the Cloudflare Worker."
 
       - name: Confirm Worker secret exists
