@@ -1,0 +1,47 @@
+name: Cloudflare Turnstile Probe
+
+on:
+  workflow_dispatch:
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  probe:
+    name: Verify Turnstile API access
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check Turnstile widget API access
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo "CLOUDFLARE_API_TOKEN is missing." >&2
+            exit 1
+          fi
+
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            echo "CLOUDFLARE_ACCOUNT_ID is missing." >&2
+            exit 1
+          fi
+
+          RESPONSE="$(curl -fsS \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/challenges/widgets" \
+            --request GET \
+            --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            --header "Content-Type: application/json")"
+
+          node -e "
+            const payload = JSON.parse(process.argv[1]);
+            if (!payload.success) {
+              console.error(JSON.stringify(payload.errors || payload, null, 2));
+              process.exit(1);
+            }
+            const widgets = Array.isArray(payload.result) ? payload.result : [];
+            console.log('Turnstile API access: ok');
+            console.log('Visible widget count:', widgets.length);
+          " "$RESPONSE"
