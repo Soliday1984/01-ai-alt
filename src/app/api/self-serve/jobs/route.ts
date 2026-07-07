@@ -118,6 +118,9 @@ export async function POST(request: Request) {
       }
     );
   } catch (error) {
+    if (error instanceof SyntaxError) {
+      return jsonError(new CsvValidationError('Invalid JSON request body.'));
+    }
     return jsonError(error);
   }
 }
