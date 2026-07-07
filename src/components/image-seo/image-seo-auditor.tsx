@@ -9,7 +9,6 @@ import {
   Copy,
   CreditCard,
   Download,
-  FileUp,
   Image as ImageIcon,
   Loader2,
   Mail,
@@ -18,7 +17,7 @@ import {
   TriangleAlert,
   WandSparkles,
 } from 'lucide-react';
-import { type FormEvent, useMemo, useRef, useState } from 'react';
+import { type FormEvent, useMemo, useState } from 'react';
 
 type InputMode = 'store' | 'csv';
 
@@ -440,7 +439,7 @@ function buildAuditSummary(
 }
 
 export function ImageSeoAuditor() {
-  const [mode, setMode] = useState<InputMode>('store');
+  const [mode, setMode] = useState<InputMode>('csv');
   const [scanStoreUrl, setScanStoreUrl] = useState('');
   const [csv, setCsv] = useState(sampleCsv);
   const [rows, setRows] = useState<ImageRow[]>([]);
@@ -454,7 +453,6 @@ export function ImageSeoAuditor() {
   const [csvSource, setCsvSource] = useState<CsvAuditResult['source']>();
   const [totalProducts, setTotalProducts] = useState(0);
   const [remainingProducts, setRemainingProducts] = useState(0);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const hasShopifyReadyCsv = isShopifyReadyCsv(csvSource);
   const hasRemainingProducts = remainingProducts > 0;
   const csvSafetyIssues = csvSource?.safetyIssues ?? [];
@@ -712,40 +710,114 @@ export function ImageSeoAuditor() {
         </div>
 
         <div className="grid grid-cols-2 rounded-lg border bg-muted/30 p-1 text-sm font-medium">
-          <button
-            type="button"
-            onClick={() => setMode('store')}
-            className={`rounded-md px-3 py-2 transition-colors ${
-              mode === 'store' ? 'bg-background shadow-sm' : 'text-muted-foreground'
+          <a
+            href="#csv-audit-panel"
+            className={`rounded-md px-3 py-2 text-center transition-colors ${
+              mode === 'csv' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:bg-background'
             }`}
+            onClick={() => setMode('csv')}
+          >
+            Shopify CSV
+          </a>
+          <a
+            href="#store-scan-panel"
+            className={`rounded-md px-3 py-2 text-center transition-colors ${
+              mode === 'store' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:bg-background'
+            }`}
+            onClick={() => setMode('store')}
           >
             Store URL
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('csv')}
-            className={`rounded-md px-3 py-2 transition-colors ${
-              mode === 'csv' ? 'bg-background shadow-sm' : 'text-muted-foreground'
-            }`}
-          >
-            CSV fallback
-          </button>
+          </a>
         </div>
 
-        {mode === 'store' ? (
-          <div className="space-y-4">
+        <div id="csv-audit-panel" className="scroll-mt-24 space-y-4 rounded-lg border bg-muted/15 p-4">
+          <div>
+            <p className="text-sm font-semibold">Recommended: Shopify Products CSV</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Export Products CSV from Shopify Admin, upload or paste it here,
+              then download a preview that preserves the original Shopify
+              columns and only updates Image Alt Text for the first 5 products.
+            </p>
+          </div>
+          <Textarea
+            value={csv}
+            onChange={(event) => {
+              setMode('csv');
+              setCsv(event.target.value);
+            }}
+            onFocus={() => setMode('csv')}
+            className="min-h-72 resize-y font-mono text-sm"
+            aria-label="CSV input"
+          />
+          <label className="grid gap-2 text-sm font-medium">
+            Upload official Shopify Products CSV
+            <input
+              className="block w-full cursor-pointer rounded-md border border-input bg-background text-sm text-muted-foreground file:mr-4 file:cursor-pointer file:border-0 file:bg-primary file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(event) => onFileChange(event.target.files?.[0])}
+            />
+          </label>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Keep every option, variant, image, and market column in place;
+            handmade four-column CSVs are audit-only and will not be treated as
+            safe Shopify imports. Free CSV checks only update the first 5
+            products and preserve the original CSV shape.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              type="button"
+              data-testid="generate-csv-suggestions"
+              onClick={() => {
+                setMode('csv');
+                runAudit();
+              }}
+              disabled={isWorking}
+            >
+              {isWorking ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <WandSparkles className="size-4" />
+              )}
+              Generate suggestions
+            </Button>
+          </div>
+        </div>
+
+        <div id="store-scan-panel" className="scroll-mt-24 space-y-4 rounded-lg border bg-muted/15 p-4">
+          <div>
+            <p className="text-sm font-semibold">Optional: public storefront scan</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Use this for public Shopify storefronts. Password-protected,
+              unpublished, or anti-bot storefronts should use the CSV workflow
+              above.
+            </p>
+          </div>
             <label className="grid gap-2 text-sm font-medium">
               Shopify store URL
               <div className="flex flex-col gap-3 sm:flex-row">
                 <input
                   value={scanStoreUrl}
-                  onChange={(event) => setScanStoreUrl(event.target.value)}
+                  onChange={(event) => {
+                    setMode('store');
+                    setScanStoreUrl(event.target.value);
+                  }}
+                  onFocus={() => setMode('store')}
                   type="url"
                   inputMode="url"
                   placeholder="https://your-store.com"
                   className="border-input bg-background h-11 min-w-0 flex-1 rounded-md border px-3 text-sm font-normal outline-none transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
                 />
-                <Button type="button" size="lg" onClick={runStoreScan} disabled={isWorking}>
+                <Button
+                  type="button"
+                  data-testid="scan-store-url"
+                  size="lg"
+                  onClick={() => {
+                    setMode('store');
+                    runStoreScan();
+                  }}
+                  disabled={isWorking}
+                >
                   {isWorking ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : (
@@ -755,7 +827,7 @@ export function ImageSeoAuditor() {
                 </Button>
               </div>
             </label>
-            <div className="rounded-lg border bg-muted/30 p-4 text-sm leading-6 text-muted-foreground">
+            <div className="rounded-lg border bg-background p-4 text-sm leading-6 text-muted-foreground">
               Free scans are capped at the first {freeProductLimit} products to
               keep the service fast and low-cost. Larger stores unlock more
               products with Growth or Agency plans. The scanner reads public
@@ -768,46 +840,9 @@ export function ImageSeoAuditor() {
                 {scanError}
               </div>
             ) : null}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <Textarea
-              value={csv}
-              onChange={(event) => setCsv(event.target.value)}
-              className="min-h-72 resize-y font-mono text-sm"
-              aria-label="CSV input"
-            />
-            <p className="text-sm leading-6 text-muted-foreground">
-              Upload the full Products CSV exported from Shopify Admin. Keep
-              every option, variant, image, and market column in place; handmade
-              four-column CSVs are audit-only and will not be treated as safe
-              Shopify imports. Free CSV checks only update the first 5 products
-              and preserve the original CSV shape.
-            </p>
-          </div>
-        )}
+        </div>
 
         <div className="flex flex-wrap gap-3">
-          {mode === 'csv' ? (
-            <>
-              <Button onClick={() => runAudit()} disabled={isWorking}>
-                {isWorking ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <WandSparkles className="size-4" />
-                )}
-                Generate suggestions
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <FileUp className="size-4" />
-                Upload CSV
-              </Button>
-            </>
-          ) : null}
           <Button
             type="button"
             variant="outline"
@@ -821,13 +856,6 @@ export function ImageSeoAuditor() {
                 : 'Export Shopify CSV'
               : 'Export audit CSV'}
           </Button>
-          <input
-            ref={fileInputRef}
-            className="hidden"
-            type="file"
-            accept=".csv,text/csv"
-            onChange={(event) => onFileChange(event.target.files?.[0])}
-          />
         </div>
       </div>
 

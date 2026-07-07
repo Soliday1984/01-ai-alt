@@ -8,7 +8,8 @@ ImageSEOFix is low-cost by design:
 
 - No paid AI API is called on the server.
 - No database, queue, object storage, or email provider is bound to the Worker.
-- `/api/*`, auth, dashboard, admin, and common scanner paths are blocked in middleware.
+- Unknown `/api/*` probes, auth, dashboard, admin, and common scanner paths are
+  blocked in middleware. The paid CSV workflow allows `/api/self-serve/*`.
 - The Worker is currently deployed on Cloudflare Workers Free plan.
 
 The main remaining risk is request volume against the Worker.
@@ -28,7 +29,8 @@ If the account moves to Workers Paid, add this optional technical fuse:
 
 Configured in `src/middleware.ts`:
 
-- Return `404` for unused product/API/admin/auth paths.
+- Return `404` for unused product/API/admin/auth paths while allowing
+  `/api/self-serve/*` for the paid CSV workflow.
 - Return `404` for common scanner paths such as WordPress, PHP, dotfile, and repository probes.
 - Return `403` for obvious automated scanner user agents.
 
@@ -69,17 +71,21 @@ For `workers.dev`, WAF controls may be limited compared with a proxied custom do
 
 - Challenge or block suspicious countries only if traffic quality is poor.
 - Rate limit by IP on expensive or abuse-prone paths.
-- Keep `/api/*`, `/admin/*`, `/dashboard/*`, `/settings/*`, and `/auth/*` blocked.
+- Keep unknown `/api/*`, `/admin/*`, `/dashboard/*`, `/settings/*`, and
+  `/auth/*` blocked. Do not block `/api/self-serve/*`; protect it with rate
+  limits and Stripe/download-token checks.
 - Challenge traffic with obvious automated or missing browser signals.
 
 Suggested first rule for custom-domain traffic:
 
-- Match: paths under `/api/`, `/admin/`, `/dashboard/`, `/settings/`, `/auth/`
+- Match: paths under `/api/` except `/api/self-serve/`, plus `/admin/`,
+  `/dashboard/`, `/settings/`, `/auth/`
 - Action: Block
 
 Suggested first rate limit:
 
-- Match: all paths on the production host
+- Match: all paths on the production host, with a stricter rule for
+  `/api/self-serve/*`
 - Threshold: 120 requests per minute per IP
 - Action: Managed Challenge or Block for 10 minutes
 

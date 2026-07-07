@@ -29,6 +29,7 @@ The product promise stays narrow: `$19` unlocks a cleaned Shopify Products CSV f
 - Page: `/self-serve`
 - Create job: `POST /api/self-serve/jobs`
 - Create checkout: `POST /api/self-serve/checkout`
+- Stripe webhook: `POST /api/self-serve/stripe/webhook`
 - Check job: `GET /api/self-serve/jobs/:jobId?token=...&session_id=...`
 - Download: `GET /api/self-serve/jobs/:jobId/download?token=...&session_id=...`
 - Migration: `migrations/0001_self_serve_jobs.sql`
@@ -99,6 +100,25 @@ pnpm exec wrangler secret put STRIPE_STARTER_PRICE_ID
 
 If `STRIPE_STARTER_PRICE_ID` is not configured, the API creates a one-time inline `$19` Checkout Session.
 
+Create a Stripe webhook endpoint:
+
+```text
+https://imageseofix.com/api/self-serve/stripe/webhook
+```
+
+Subscribe to:
+
+```text
+checkout.session.completed
+checkout.session.async_payment_succeeded
+```
+
+Then save the endpoint signing secret:
+
+```powershell
+pnpm exec wrangler secret put STRIPE_WEBHOOK_SECRET
+```
+
 Set public build variables in GitHub Actions or Cloudflare deployment environment:
 
 ```text
@@ -134,13 +154,13 @@ pnpm exec wrangler deploy --dry-run
    - `self-serve/{jobId}/original.csv`
    - `self-serve/{jobId}/cleaned.csv`
 7. Pay with Stripe test card in test mode first.
-8. Return to the success URL and confirm the download button appears.
-9. Download the cleaned CSV and validate in Shopify import preview.
-10. Switch to live Stripe key only after the import preview path passes.
+8. Confirm the Stripe webhook marks the D1 job as `payment_status='paid'`.
+9. Return to the success URL and confirm the download button appears.
+10. Download the cleaned CSV and validate in Shopify import preview.
+11. Switch to live Stripe key only after the import preview path passes.
 
 ## Next v2 items
 
-- Stripe webhook fulfillment for events that happen after the browser closes.
 - Email receipt and download link.
 - Cloudflare Turnstile on job creation if abuse appears.
 - Per-email job history after repeat users appear.

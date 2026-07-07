@@ -8,7 +8,7 @@ Use **Cloudflare Workers with OpenNext** for the first Cloudflare trial of Image
 
 Why this is the right default for this repo:
 
-- The current app is a static/client-side-first Next.js app, but it still has a request guard that adds security headers and returns 404 for `/api/*`, `/admin/*`, `/dashboard/*`, `/settings/*`, and `/auth/*`.
+- The current app is a static/client-side-first Next.js app, but it still has a request guard that adds security headers and returns 404 for unknown `/api/*`, `/admin/*`, `/dashboard/*`, `/settings/*`, and `/auth/*` paths. The paid CSV workflow allows `/api/self-serve/*`.
 - Next static export is attractive for Cloudflare Pages, but static export does not support Proxy/Middleware. Moving to Pages would require replacing that guard with Pages `_headers` plus either redirects or a Pages Function.
 - Workers + OpenNext keeps the existing Next behavior and gives a clean upgrade path if the product later adds auth, APIs, AI calls, or Shopify integrations.
 

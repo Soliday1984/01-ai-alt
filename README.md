@@ -46,7 +46,8 @@ pnpm build
 - The free audit runs client-side in the browser.
 - The self-serve paid flow must stay behind `NEXT_PUBLIC_SELF_SERVE_ENABLED`
   until D1, R2, and Stripe secrets are configured.
-- `/api/`, `/admin/`, `/dashboard/`, `/settings/`, and `/auth/` return 404.
+- Unknown `/api/` probes, `/admin/`, `/dashboard/`, `/settings/`, and `/auth/`
+  return 404; `/api/self-serve/*` stays open for the paid CSV workflow.
 - Real AI generation, direct Shopify import, and full account history stay
   disabled until authentication, rate limits, caching, and spend controls are
   configured.
@@ -54,4 +55,5 @@ pnpm build
   deployment.
 
 See `docs/self-serve-saas-v1.md` for the Cloudflare D1, R2, and Stripe setup
-runbook.
+runbook. See `docs/fully-automated-saas-checklist.md` for the remaining
+automation checklist before treating ImageSEOFix as a fully automated SaaS.

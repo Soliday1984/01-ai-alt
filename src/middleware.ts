@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+const allowedPrefixes = ['/api/self-serve/'];
 const blockedPrefixes = ['/api/', '/admin/', '/dashboard/', '/settings/', '/auth/'];
 const blockedExactPaths = new Set([
   '/api',
@@ -46,6 +47,10 @@ function applySecurityHeaders(response: NextResponse) {
 
 function isBlockedPath(pathname: string) {
   const normalizedPath = pathname.toLowerCase();
+
+  if (allowedPrefixes.some((prefix) => normalizedPath.startsWith(prefix))) {
+    return false;
+  }
 
   return (
     blockedExactPaths.has(normalizedPath) ||

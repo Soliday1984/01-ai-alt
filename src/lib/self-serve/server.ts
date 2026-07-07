@@ -25,6 +25,7 @@ type SelfServeEnv = CloudflareEnv & {
   IMAGESEOFIX_DB?: D1DatabaseBinding;
   IMAGESEOFIX_UPLOADS?: R2BucketBinding;
   STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
   STRIPE_STARTER_PRICE_ID?: string;
   NEXT_PUBLIC_SITE_URL?: string;
 };
@@ -289,6 +290,106 @@ function requireStripeSecret(env: SelfServeEnv) {
     );
   }
   return secret;
+}
+
+function requireStripeWebhookSecret(env: SelfServeEnv) {
+  const secret = env.STRIPE_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) {
+    throw new SelfServeConfigError(
+      'Stripe webhook signing secret is not configured yet. Add STRIPE_WEBHOOK_SECRET before enabling automated fulfillment.'
+    );
+  }
+  return secret;
+}
+
+function parseStripeSignatureHeader(signatureHeader: string) {
+  const parts = signatureHeader.split(',');
+  const timestamp = parts
+    .map((part) => part.trim().split('='))
+    .find(([key]) => key === 't')?.[1];
+  const signatures = parts
+    .map((part) => part.trim().split('='))
+    .filter(([key, value]) => key === 'v1' && Boolean(value))
+    .map(([, value]) => value);
+
+  return { timestamp, signatures };
+}
+
+function hexToBytes(value: string) {
+  if (!/^[0-9a-f]+$/i.test(value) || value.length % 2 !== 0) {
+    return null;
+  }
+
+  const bytes = new Uint8Array(value.length / 2);
+  for (let index = 0; index < value.length; index += 2) {
+    bytes[index / 2] = Number.parseInt(value.slice(index, index + 2), 16);
+  }
+  return bytes;
+}
+
+function timingSafeHexEqual(left: string, right: string) {
+  const leftBytes = hexToBytes(left);
+  const rightBytes = hexToBytes(right);
+  if (!leftBytes || !rightBytes || leftBytes.length !== rightBytes.length) {
+    return false;
+  }
+
+  let diff = 0;
+  for (let index = 0; index < leftBytes.length; index += 1) {
+    diff |= leftBytes[index] ^ rightBytes[index];
+  }
+  return diff === 0;
+}
+
+async function hmacSha256Hex(secret: string, payload: string) {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
+
+  return [...new Uint8Array(signature)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+export async function verifyStripeWebhookSignature(input: {
+  env: SelfServeEnv;
+  rawBody: string;
+  signatureHeader: string | null;
+  toleranceSeconds?: number;
+}) {
+  if (!input.signatureHeader) {
+    throw new SelfServeError('Missing Stripe webhook signature.', 400);
+  }
+
+  const { timestamp, signatures } = parseStripeSignatureHeader(input.signatureHeader);
+  if (!timestamp || signatures.length === 0) {
+    throw new SelfServeError('Invalid Stripe webhook signature.', 400);
+  }
+
+  const timestampNumber = Number(timestamp);
+  const tolerance = input.toleranceSeconds ?? 300;
+  const now = Math.floor(Date.now() / 1000);
+  if (!Number.isFinite(timestampNumber) || Math.abs(now - timestampNumber) > tolerance) {
+    throw new SelfServeError('Expired Stripe webhook signature.', 400);
+  }
+
+  const expectedSignature = await hmacSha256Hex(
+    requireStripeWebhookSecret(input.env),
+    `${timestamp}.${input.rawBody}`
+  );
+  const isValid = signatures.some((signature) =>
+    timingSafeHexEqual(signature, expectedSignature)
+  );
+
+  if (!isValid) {
+    throw new SelfServeError('Invalid Stripe webhook signature.', 400);
+  }
 }
 
 async function parseStripeResponse(response: Response) {
