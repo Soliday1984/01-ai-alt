@@ -44,6 +44,8 @@ Configured in the self-serve API:
   parsing the upload body or writing D1/R2.
 - `POST /api/self-serve/jobs` rejects upload requests with a declared body
   larger than the beta limit before parsing JSON.
+- `POST /api/self-serve/jobs` requires a Cloudflare Turnstile token and verifies
+  it server-side before CSV processing, R2 writes, or D1 writes.
 - CSV payloads are capped at 2 MB.
 - Cleaned CSV downloads require a private job token and `payment_status='paid'`.
 - `POST /api/self-serve/checkout` is also behind the server-side self-serve
@@ -107,6 +109,18 @@ Suggested first rate limit:
 - Action: Managed Challenge or Block for 10 minutes
 
 Tune the threshold only after checking real search crawler and user traffic.
+
+### Turnstile
+
+The code path is ready, but production still needs the Cloudflare account-side
+widget and secrets:
+
+- Create a Turnstile managed widget for `imageseofix.com`, `www.imageseofix.com`,
+  `localhost`, and `127.0.0.1`.
+- Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` in the deployment build environment.
+- Set `TURNSTILE_SECRET_KEY` as a Worker secret.
+- Keep `SELF_SERVE_ENABLED=false` until the widget renders and the server-side
+  Siteverify call passes in test mode.
 
 ## Emergency runbook
 

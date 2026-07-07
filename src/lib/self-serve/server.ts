@@ -28,8 +28,10 @@ type SelfServeEnv = CloudflareEnv & {
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   STRIPE_STARTER_PRICE_ID?: string;
+  TURNSTILE_SECRET_KEY?: string;
   NEXT_PUBLIC_SITE_URL?: string;
   NEXT_PUBLIC_SELF_SERVE_ENABLED?: string;
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY?: string;
 };
 
 export type SelfServeBindings = {
@@ -162,6 +164,57 @@ export function publicSiteUrl(env: SelfServeEnv, request?: Request) {
     return new URL(request.url).origin;
   }
   return 'https://imageseofix.com';
+}
+
+function requireTurnstileSecret(env: SelfServeEnv) {
+  const secret = env.TURNSTILE_SECRET_KEY || process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) {
+    throw new SelfServeConfigError(
+      'Security check is not configured yet. Add TURNSTILE_SECRET_KEY before enabling self-serve uploads.'
+    );
+  }
+  return secret;
+}
+
+export function requestIp(request: Request) {
+  return (
+    request.headers.get('cf-connecting-ip') ||
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    null
+  );
+}
+
+export async function verifyTurnstileToken(input: {
+  env: SelfServeEnv;
+  token: string;
+  remoteIp?: string | null;
+}) {
+  if (!input.token || input.token.length > 4096) {
+    throw new SelfServeError('Complete the security check before uploading the CSV.', 400);
+  }
+
+  const formData = new FormData();
+  formData.append('secret', requireTurnstileSecret(input.env));
+  formData.append('response', input.token);
+  if (input.remoteIp) {
+    formData.append('remoteip', input.remoteIp);
+  }
+
+  const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    body: formData,
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { success?: boolean; action?: string; 'error-codes'?: string[] }
+    | null;
+
+  if (!response.ok || !payload?.success) {
+    throw new SelfServeError('Security check failed. Refresh the page and try again.', 403);
+  }
+
+  if (payload.action && payload.action !== 'turnstile-spin-v1') {
+    throw new SelfServeError('Security check action did not match this form.', 403);
+  }
 }
 
 function randomHex(bytesLength = 18) {

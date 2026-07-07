@@ -17,6 +17,7 @@ This is the first paid SaaS loop, not a full account system. The access model is
 - Next.js 16 on Cloudflare Workers through OpenNext.
 - Cloudflare D1 for job and order metadata.
 - Cloudflare R2 for original and cleaned CSV files.
+- Cloudflare Turnstile on job creation before any CSV processing or R2 writes.
 - Stripe Checkout Sessions for one-time payment.
 - No AI image model calls in v1.
 - No Shopify Admin OAuth in v1.
@@ -119,6 +120,36 @@ Then save the endpoint signing secret:
 pnpm exec wrangler secret put STRIPE_WEBHOOK_SECRET
 ```
 
+## Turnstile setup
+
+Create a Cloudflare Turnstile widget before opening self-serve uploads.
+
+Recommended widget domains:
+
+```text
+imageseofix.com
+www.imageseofix.com
+localhost
+127.0.0.1
+```
+
+Set the public site key in GitHub Actions or the Cloudflare deployment
+environment:
+
+```text
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=replace-with-turnstile-site-key
+```
+
+Save the secret key as a Worker secret:
+
+```powershell
+pnpm exec wrangler secret put TURNSTILE_SECRET_KEY
+```
+
+`POST /api/self-serve/jobs` rejects uploads unless the Turnstile token verifies
+server-side against Cloudflare Siteverify. Keep self-serve disabled until both
+the public site key and `TURNSTILE_SECRET_KEY` are configured.
+
 Set public build variables in GitHub Actions or Cloudflare deployment environment:
 
 ```text
@@ -127,7 +158,7 @@ SELF_SERVE_ENABLED=true
 NEXT_PUBLIC_SELF_SERVE_ENABLED=true
 ```
 
-Keep `SELF_SERVE_ENABLED=false` and `NEXT_PUBLIC_SELF_SERVE_ENABLED=false`, or leave them unset, until D1, R2, Stripe, the webhook, and abuse protection are ready. The server blocks job creation, R2 writes, D1 writes, and checkout unless `SELF_SERVE_ENABLED` is explicitly `true`.
+Keep `SELF_SERVE_ENABLED=false` and `NEXT_PUBLIC_SELF_SERVE_ENABLED=false`, or leave them unset, until D1, R2, Stripe, the webhook, Turnstile, and abuse protection are ready. The server blocks job creation, R2 writes, D1 writes, and checkout unless `SELF_SERVE_ENABLED` is explicitly `true`.
 
 `NEXT_PUBLIC_SELF_SERVE_ENABLED` only controls whether the UI shows the self-serve entry. `SELF_SERVE_ENABLED` is the server-side write gate and must be `true` before the API will create jobs, write R2/D1, or start checkout.
 
@@ -151,21 +182,21 @@ pnpm cf:build
 pnpm exec wrangler deploy --dry-run
 ```
 
-4. Upload a real Shopify Products CSV to `/self-serve`.
-5. Confirm D1 has a new `self_serve_jobs` row.
-6. Confirm R2 has:
+4. Confirm the Turnstile widget appears on `/self-serve`.
+5. Upload a real Shopify Products CSV to `/self-serve`.
+6. Confirm D1 has a new `self_serve_jobs` row.
+7. Confirm R2 has:
    - `self-serve/{jobId}/original.csv`
    - `self-serve/{jobId}/cleaned.csv`
-7. Pay with Stripe test card in test mode first.
-8. Confirm the Stripe webhook marks the D1 job as `payment_status='paid'`.
-9. Return to the success URL and confirm the download button appears.
-10. Download the cleaned CSV and validate in Shopify import preview.
-11. Switch to live Stripe key only after the import preview path passes.
+8. Pay with Stripe test card in test mode first.
+9. Confirm the Stripe webhook marks the D1 job as `payment_status='paid'`.
+10. Return to the success URL and confirm the download button appears.
+11. Download the cleaned CSV and validate in Shopify import preview.
+12. Switch to live Stripe key only after the import preview path passes.
 
 ## Next v2 items
 
 - Email receipt and download link.
-- Cloudflare Turnstile on job creation if abuse appears.
 - Per-email job history after repeat users appear.
 - Shopify Admin OAuth only after CSV self-serve gets paid demand.
 
@@ -176,3 +207,5 @@ pnpm exec wrangler deploy --dry-run
 - Cloudflare R2 pricing: https://developers.cloudflare.com/r2/pricing/
 - Stripe Checkout Sessions: https://docs.stripe.com/api/checkout/sessions/create
 - Stripe Checkout fulfillment: https://docs.stripe.com/checkout/fulfillment
+- Cloudflare Turnstile client rendering: https://developers.cloudflare.com/turnstile/get-started/client-side-rendering/
+- Cloudflare Turnstile server validation: https://developers.cloudflare.com/turnstile/get-started/server-side-validation/

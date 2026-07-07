@@ -13,8 +13,27 @@ import {
   ShieldCheck,
   Upload,
 } from 'lucide-react';
+import Script from 'next/script';
 import { useSearchParams } from 'next/navigation';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
+
+type TurnstileRenderOptions = {
+  sitekey: string;
+  action?: string;
+  callback?: (token: string) => void;
+  'expired-callback'?: () => void;
+  'error-callback'?: () => void;
+};
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: HTMLElement, options: TurnstileRenderOptions) => string;
+      reset: (widgetId?: string) => void;
+      remove?: (widgetId: string) => void;
+    };
+  }
+}
 
 type JobStats = {
   totalRows: number;
@@ -53,6 +72,7 @@ type JobStatus = {
 };
 
 const starterPrice = '$19';
+const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || '';
 
 const steps = [
   'Export the full Products CSV from Shopify Admin.',
@@ -83,6 +103,8 @@ function mergeStatsFromStatus(status: JobStatus): JobStats {
 export function SelfServeClient() {
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const turnstileContainerRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
   const [email, setEmail] = useState('');
   const [storeUrl, setStoreUrl] = useState('');
   const [csv, setCsv] = useState('');
@@ -93,9 +115,40 @@ export function SelfServeClient() {
   const [isUploading, setIsUploading] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [isTurnstileReady, setIsTurnstileReady] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   const stats =
     createdJob?.stats ?? (jobStatus ? mergeStatsFromStatus(jobStatus) : null);
+
+  useEffect(() => {
+    if (
+      !turnstileSiteKey ||
+      !isTurnstileReady ||
+      !turnstileContainerRef.current ||
+      turnstileWidgetIdRef.current ||
+      !window.turnstile
+    ) {
+      return;
+    }
+
+    const widgetId = window.turnstile.render(turnstileContainerRef.current, {
+      sitekey: turnstileSiteKey,
+      action: 'turnstile-spin-v1',
+      callback: (token) => setTurnstileToken(token),
+      'expired-callback': () => setTurnstileToken(''),
+      'error-callback': () => setTurnstileToken(''),
+    });
+
+    turnstileWidgetIdRef.current = widgetId;
+
+    return () => {
+      if (window.turnstile?.remove) {
+        window.turnstile.remove(widgetId);
+      }
+      turnstileWidgetIdRef.current = null;
+    };
+  }, [isTurnstileReady]);
 
   useEffect(() => {
     const job = searchParams.get('job');
@@ -179,11 +232,28 @@ export function SelfServeClient() {
     reader.readAsText(file);
   }
 
+  function resetTurnstile() {
+    setTurnstileToken('');
+    if (turnstileWidgetIdRef.current && window.turnstile) {
+      window.turnstile.reset(turnstileWidgetIdRef.current);
+    }
+  }
+
   async function createJob(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!csv.trim()) {
       setError('Upload the full Shopify Products CSV first.');
+      return;
+    }
+
+    if (!turnstileSiteKey) {
+      setError('Security check is being configured. Try again soon.');
+      return;
+    }
+
+    if (!turnstileToken) {
+      setError('Complete the security check before generating the cleaned CSV.');
       return;
     }
 
@@ -200,6 +270,7 @@ export function SelfServeClient() {
           email,
           storeUrl,
           csv,
+          turnstileToken,
         }),
       });
 
@@ -220,6 +291,7 @@ export function SelfServeClient() {
           : 'Unable to create this cleanup job.'
       );
     } finally {
+      resetTurnstile();
       setIsUploading(false);
     }
   }
@@ -380,8 +452,32 @@ export function SelfServeClient() {
             </div>
           </div>
 
+          <Script
+            src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+            strategy="afterInteractive"
+            onLoad={() => setIsTurnstileReady(true)}
+          />
+
+          <div className="mt-5 rounded-lg border bg-muted/30 p-4">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <ShieldCheck className="size-4 text-primary" />
+              Security check
+            </div>
+            {turnstileSiteKey ? (
+              <div ref={turnstileContainerRef} className="mt-3 min-h-[65px]" />
+            ) : (
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Security check is being configured. Self-serve uploads are not
+                open yet.
+              </p>
+            )}
+          </div>
+
           <div className="mt-5 flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={isUploading}>
+            <Button
+              type="submit"
+              disabled={isUploading || !turnstileSiteKey || !turnstileToken}
+            >
               {isUploading ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (

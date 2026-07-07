@@ -33,6 +33,7 @@ webhook fulfillment, abuse protection, and production E2E are live.
 - [ ] Public env configured:
   - `NEXT_PUBLIC_SITE_URL=https://imageseofix.com`
   - `NEXT_PUBLIC_SELF_SERVE_ENABLED=true`
+  - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
 - [ ] Stripe webhook registered for
   `/api/self-serve/stripe/webhook`.
 - [ ] Test-mode E2E passes: upload CSV, create job, pay with Stripe test card,
@@ -47,9 +48,12 @@ webhook fulfillment, abuse protection, and production E2E are live.
 - [x] CSV upload is capped at 2 MB.
 - [x] Server-side self-serve write gate blocks job creation, R2 writes, D1
   writes, and checkout while `SELF_SERVE_ENABLED` is not explicitly `true`.
+- [x] Turnstile code path added to job creation before CSV processing, R2
+  writes, and D1 writes.
 - [ ] Cloudflare WAF rule protects `/api/self-serve/*` with rate limiting or
   Managed Challenge.
-- [ ] Turnstile added to job creation if upload abuse appears.
+- [ ] Cloudflare Turnstile widget created and `TURNSTILE_SECRET_KEY` configured
+  before enabling self-serve uploads.
 - [ ] Cloudflare usage and billing alerts checked before traffic push.
 - [x] Emergency rollback documented: set `SELF_SERVE_ENABLED=false` and
   `NEXT_PUBLIC_SELF_SERVE_ENABLED=false`, then redeploy.
@@ -77,5 +81,6 @@ webhook fulfillment, abuse protection, and production E2E are live.
 
 - Cloudflare account access or API token for D1, R2, WAF, secrets, and deploy.
 - Stripe live/test secret and webhook signing secret.
+- Cloudflare Turnstile widget site key and secret.
 - A production domain route pointing to the deployed Worker.
 - Optional email provider if we want automatic receipts in v1.

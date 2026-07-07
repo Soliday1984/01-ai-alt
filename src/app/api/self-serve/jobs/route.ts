@@ -8,6 +8,9 @@ import {
   insertJob,
   jsonError,
   putCsvObject,
+  requestIp,
+  SelfServeError,
+  verifyTurnstileToken,
 } from '@/lib/self-serve/server';
 
 export const dynamic = 'force-dynamic';
@@ -60,6 +63,19 @@ function normalizeCsv(value: unknown) {
   return csv;
 }
 
+function normalizeTurnstileToken(value: unknown) {
+  if (typeof value !== 'string') {
+    throw new SelfServeError('Complete the security check before uploading the CSV.', 400);
+  }
+
+  const token = value.trim();
+  if (!token || token.length > 4096) {
+    throw new SelfServeError('Complete the security check before uploading the CSV.', 400);
+  }
+
+  return token;
+}
+
 function rejectOversizedRequest(request: Request) {
   const contentLength = request.headers.get('content-length');
   if (!contentLength) {
@@ -85,6 +101,14 @@ export async function POST(request: Request) {
     const email = normalizeEmail(body?.email);
     const storeUrl = normalizeStoreUrl(body?.storeUrl);
     const csv = normalizeCsv(body?.csv);
+    const turnstileToken = normalizeTurnstileToken(body?.turnstileToken);
+
+    await verifyTurnstileToken({
+      env,
+      token: turnstileToken,
+      remoteIp: requestIp(request),
+    });
+
     const result = processShopifyCsv(csv, 100);
     const jobId = createJobId();
     const token = createAccessToken();
