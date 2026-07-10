@@ -76,6 +76,14 @@ export type StripeCheckoutSession = {
   url?: string;
   client_reference_id?: string | null;
   payment_status?: string | null;
+  amount_total?: number | null;
+  currency?: string | null;
+  livemode?: boolean;
+  mode?: string | null;
+  metadata?: {
+    job_id?: string;
+    product?: string;
+  };
 };
 
 export class SelfServeError extends Error {
@@ -364,6 +372,19 @@ function requireStripeSecret(env: SelfServeEnv) {
   return secret;
 }
 
+function stripeLivemodeFromSecret(env: SelfServeEnv) {
+  const secret = requireStripeSecret(env);
+  if (/^(sk|rk)_live_/.test(secret)) {
+    return true;
+  }
+  if (/^(sk|rk)_test_/.test(secret)) {
+    return false;
+  }
+  throw new SelfServeConfigError(
+    'Stripe key mode could not be verified. Use a live or test Stripe secret key.'
+  );
+}
+
 function requireStripeWebhookSecret(env: SelfServeEnv) {
   const secret = env.STRIPE_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) {
@@ -559,6 +580,27 @@ export async function retrieveCheckoutSession(
   return (await parseStripeResponse(response)) as StripeCheckoutSession;
 }
 
+export function isExpectedPaidCheckoutSession(input: {
+  env: SelfServeEnv;
+  job: SelfServeJobRow;
+  session: StripeCheckoutSession;
+}) {
+  const { job, session } = input;
+
+  return (
+    Boolean(job.checkout_session_id) &&
+    session.id === job.checkout_session_id &&
+    session.client_reference_id === job.id &&
+    session.metadata?.job_id === job.id &&
+    session.metadata?.product === 'imageseofix_self_serve_csv_v1' &&
+    session.mode === 'payment' &&
+    session.payment_status === 'paid' &&
+    session.amount_total === 1900 &&
+    session.currency?.toLowerCase() === 'usd' &&
+    session.livemode === stripeLivemodeFromSecret(input.env)
+  );
+}
+
 export async function markPaidFromStripeSession(input: {
   db: D1DatabaseBinding;
   env: SelfServeEnv;
@@ -572,8 +614,11 @@ export async function markPaidFromStripeSession(input: {
   const session = await retrieveCheckoutSession(input.env, input.sessionId);
   if (
     session.id === input.sessionId &&
-    session.client_reference_id === input.job.id &&
-    session.payment_status === 'paid'
+    isExpectedPaidCheckoutSession({
+      env: input.env,
+      job: input.job,
+      session,
+    })
   ) {
     await markJobPaid(input.db, input.job.id, session.id);
     return true;

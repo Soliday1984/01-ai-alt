@@ -490,6 +490,13 @@ export function SelfServeClient() {
               before importing it.
             </p>
           </div>
+          <p className="mt-3 text-xs leading-5 text-muted-foreground">
+            By uploading, you acknowledge our{' '}
+            <a className="font-medium text-primary hover:underline" href="/privacy">
+              Privacy Policy
+            </a>
+            .
+          </p>
         </form>
 
         {error ? (
@@ -565,6 +572,26 @@ export function SelfServeClient() {
                 <a href="/#shopify-csv-workflow">Read import guide</a>
               </Button>
             </div>
+            {!jobStatus?.canDownload ? (
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                By paying, you agree to the{' '}
+                <a className="font-medium text-primary hover:underline" href="/terms">
+                  Terms
+                </a>
+                ,{' '}
+                <a className="font-medium text-primary hover:underline" href="/privacy">
+                  Privacy Policy
+                </a>
+                , and{' '}
+                <a
+                  className="font-medium text-primary hover:underline"
+                  href="/refund-policy"
+                >
+                  Refund Policy
+                </a>
+                .
+              </p>
+            ) : null}
           </div>
         ) : null}
 

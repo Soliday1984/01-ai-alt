@@ -1,5 +1,7 @@
 import {
+  getJob,
   getSelfServeBindings,
+  isExpectedPaidCheckoutSession,
   jsonError,
   markJobPaid,
   SelfServeError,
@@ -19,8 +21,13 @@ type StripeWebhookEvent = {
       client_reference_id?: string | null;
       metadata?: {
         job_id?: string;
+        product?: string;
       };
       payment_status?: string | null;
+      amount_total?: number | null;
+      currency?: string | null;
+      livemode?: boolean;
+      mode?: string | null;
     };
   };
 };
@@ -57,7 +64,26 @@ export async function POST(request: Request) {
     }
 
     const jobId = session.client_reference_id || session.metadata?.job_id || '';
-    if (!session.id || !jobId || session.payment_status !== 'paid') {
+    if (
+      !session.id ||
+      !jobId ||
+      session.payment_status !== 'paid' ||
+      session.metadata?.product !== 'imageseofix_self_serve_csv_v1'
+    ) {
+      return Response.json({ received: true, ignored: true });
+    }
+
+    const job = await getJob(db, jobId);
+    if (
+      !isExpectedPaidCheckoutSession({
+        env,
+        job,
+        session: {
+          ...session,
+          id: session.id,
+        },
+      })
+    ) {
       return Response.json({ received: true, ignored: true });
     }
 

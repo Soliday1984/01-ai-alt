@@ -1,5 +1,6 @@
 import { ImageSeoAuditor } from '@/components/image-seo/image-seo-auditor';
 import { TrackedLink } from '@/components/image-seo/tracked-link';
+import { SiteFooter } from '@/components/site-footer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -431,6 +432,7 @@ export function ImageSeoHome() {
           </div>
         </div>
       </section>
+      <SiteFooter />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 # ImageSEOFix Fully Automated SaaS Checklist
 
-Updated: 2026-07-07
+Updated: 2026-07-10
 
 Goal: move from a paid manual CSV cleanup service to a self-serve SaaS loop:
 merchant uploads official Shopify Products CSV, pays once, receives an unlocked
@@ -8,9 +8,9 @@ cleaned CSV download, and can complete the whole path without waiting for us.
 
 ## Current Verdict
 
-ImageSEOFix can sell the first manual or semi-automated `$19` cleanup now. It is
-not yet a fully automated SaaS until Cloudflare storage, Stripe live checkout,
-webhook fulfillment, abuse protection, and production E2E are live.
+ImageSEOFix has passed the complete test-mode self-serve delivery loop. The live
+webhook and live `$19` Price are configured, but public self-serve remains
+disabled until the permanent restricted live key and one real-payment E2E pass.
 
 ## P0 Revenue Loop
 
@@ -26,17 +26,16 @@ webhook fulfillment, abuse protection, and production E2E are live.
 - [x] Cloudflare D1 database created and bound as `IMAGESEOFIX_DB`.
 - [x] Cloudflare R2 bucket created and bound as `IMAGESEOFIX_UPLOADS`.
 - [x] Remote D1 migration applied: `migrations/0001_self_serve_jobs.sql`.
-- [ ] Cloudflare secrets configured:
-  - `STRIPE_SECRET_KEY`
-  - `STRIPE_WEBHOOK_SECRET`
-  - optional `STRIPE_STARTER_PRICE_ID`
-- [ ] Public env configured:
-  - `NEXT_PUBLIC_SITE_URL=https://imageseofix.com`
-  - `NEXT_PUBLIC_SELF_SERVE_ENABLED=true`
-  - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
-- [ ] Stripe webhook registered for
+- [x] Cloudflare storage, Turnstile, and Stripe secret names are configured.
+- [x] Live `STRIPE_WEBHOOK_SECRET` and live `STRIPE_STARTER_PRICE_ID` are
+  configured in the Worker.
+- [ ] Replace `STRIPE_SECRET_KEY` with the permanent least-privilege live key.
+- [x] Public site URL and Turnstile site key are configured.
+- [ ] Set `SELF_SERVE_ENABLED=true` and
+  `NEXT_PUBLIC_SELF_SERVE_ENABLED=true` only for the live E2E/open launch.
+- [x] Live Stripe webhook registered for
   `/api/self-serve/stripe/webhook`.
-- [ ] Test-mode E2E passes: upload CSV, create job, pay with Stripe test card,
+- [x] Test-mode E2E passes: upload CSV, create job, pay with Stripe test card,
   webhook marks job paid, download cleaned CSV.
 - [ ] Live-mode E2E passes with a small real payment or couponed live order.
 - [ ] Shopify import preview validates the downloaded cleaned CSV.
@@ -52,7 +51,7 @@ webhook fulfillment, abuse protection, and production E2E are live.
   writes, and D1 writes.
 - [ ] Cloudflare WAF rule protects `/api/self-serve/*` with rate limiting or
   Managed Challenge.
-- [ ] Cloudflare Turnstile widget created and `TURNSTILE_SECRET_KEY` configured
+- [x] Cloudflare Turnstile widget created and `TURNSTILE_SECRET_KEY` configured
   before enabling self-serve uploads.
 - [ ] Cloudflare usage and billing alerts checked before traffic push.
 - [x] Emergency rollback documented: set `SELF_SERVE_ENABLED=false` and
@@ -62,8 +61,8 @@ webhook fulfillment, abuse protection, and production E2E are live.
 
 - [ ] Email receipt or download link after payment.
 - [ ] Admin/job lookup page or CLI runbook for support.
-- [ ] Clear refund/support policy on site.
-- [ ] Terms and Privacy pages linked from checkout-adjacent pages.
+- [x] Clear refund/support policy on site.
+- [x] Terms and Privacy pages linked from checkout-adjacent pages.
 - [ ] CSV output regression fixture using a real Shopify export.
 - [ ] Repeat-user path: email-based job lookup or lightweight magic link.
 
@@ -77,10 +76,9 @@ webhook fulfillment, abuse protection, and production E2E are live.
 - [ ] Weekly review: queries, impressions, clicks, uploads, paid conversion,
   refunds, support issues.
 
-## Blocked By External Access
+## Remaining External Actions
 
-- Cloudflare account access or API token for D1, R2, WAF, secrets, and deploy.
-- Stripe live/test secret and webhook signing secret.
-- Cloudflare Turnstile widget site key and secret.
-- A production domain route pointing to the deployed Worker.
-- Optional email provider if we want automatic receipts in v1.
+- Confirm creation of the least-privilege live Stripe restricted key.
+- Complete one real `$19` payment and refund it after delivery verification.
+- Confirm Shopify import preview accepts the live-E2E cleaned CSV.
+- Optional email provider if automatic download-link delivery is added in v1.

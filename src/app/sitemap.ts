@@ -11,6 +11,9 @@ const routes = [
   '/shopify-alt-text-csv-generator',
   '/ai-alt-text-generator-for-shopify',
   '/woocommerce-alt-text-generator',
+  '/privacy',
+  '/terms',
+  '/refund-policy',
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

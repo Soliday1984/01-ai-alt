@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 
+import { SiteFooter } from '@/components/site-footer';
+
 import { SelfServeClient } from './self-serve-client';
 
 export const metadata: Metadata = {
@@ -24,6 +26,7 @@ export default function SelfServePage() {
       >
         <SelfServeClient />
       </Suspense>
+      <SiteFooter />
     </main>
   );
 }
