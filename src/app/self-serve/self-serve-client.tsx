@@ -118,8 +118,9 @@ export function SelfServeClient() {
   const [isTurnstileReady, setIsTurnstileReady] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState('');
 
-  const stats =
-    createdJob?.stats ?? (jobStatus ? mergeStatsFromStatus(jobStatus) : null);
+  const stats = jobStatus
+    ? mergeStatsFromStatus(jobStatus)
+    : (createdJob?.stats ?? null);
 
   useEffect(() => {
     if (
