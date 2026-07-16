@@ -12,7 +12,8 @@
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf:whoami": "wrangler whoami",
     "cf:typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
-    "test:csv": "node --experimental-strip-types --test tests/self-serve-csv.test.ts"
+    "test:csv": "node --experimental-strip-types --test tests/self-serve-csv.test.ts",
+    "test:self-serve": "node --experimental-strip-types --test tests/self-serve-csv.test.ts tests/self-serve-payment.test.ts"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.19.11",

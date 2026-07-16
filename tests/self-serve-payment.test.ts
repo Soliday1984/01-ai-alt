@@ -1,0 +1,169 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  hashToken,
+  markPaidFromStripeSession,
+  verifyJobToken,
+  type SelfServeJobRow,
+} from '../src/lib/self-serve/server.ts';
+
+function createJob(tokenHash: string): SelfServeJobRow {
+  return {
+    id: 'job_test_paid',
+    email: 'merchant@example.com',
+    store_url: 'https://merchant.example.com',
+    original_key: 'self-serve/job_test_paid/original.csv',
+    cleaned_key: 'self-serve/job_test_paid/cleaned.csv',
+    token_hash: tokenHash,
+    status: 'ready',
+    payment_status: 'unpaid',
+    checkout_session_id: 'cs_test_123',
+    processed_image_rows: 3,
+    changed_rows: 2,
+    issue_rows: 2,
+    total_image_rows: 3,
+    detected_products: 2,
+    warnings_json: '[]',
+    created_at: '2026-07-16T00:00:00.000Z',
+    updated_at: '2026-07-16T00:00:00.000Z',
+    paid_at: null,
+    first_downloaded_at: null,
+    download_count: 0,
+    import_status: null,
+    import_feedback: null,
+    import_reported_at: null,
+    recovery_token_hash: null,
+    recovery_token_expires_at: null,
+  };
+}
+
+function createDb(job: SelfServeJobRow) {
+  return {
+    prepare(query: string) {
+      let values: unknown[] = [];
+      return {
+        bind(...nextValues: unknown[]) {
+          values = nextValues;
+          return this;
+        },
+        async first<T>() {
+          return job as T;
+        },
+        async all<T>() {
+          return { results: [job] as T[] };
+        },
+        async run() {
+          if (query.includes("SET payment_status = 'paid'")) {
+            if (job.payment_status === 'paid') {
+              return { meta: { changes: 0 } };
+            }
+            job.payment_status = 'paid';
+            job.checkout_session_id = String(values[0]);
+            job.paid_at = String(values[1]);
+            job.updated_at = String(values[2]);
+            return { meta: { changes: 1 } };
+          }
+
+          if (query.includes('SET recovery_token_hash = ?')) {
+            job.recovery_token_hash = String(values[0]);
+            job.recovery_token_expires_at = String(values[1]);
+            job.updated_at = String(values[2]);
+            return { meta: { changes: 1 } };
+          }
+
+          throw new Error(`Unexpected test SQL: ${query}`);
+        },
+      };
+    },
+  };
+}
+
+function checkoutSession(amountTotal = 1900) {
+  return {
+    id: 'cs_test_123',
+    client_reference_id: 'job_test_paid',
+    metadata: {
+      job_id: 'job_test_paid',
+      product: 'imageseofix_self_serve_csv_v1',
+    },
+    mode: 'payment',
+    payment_status: 'paid',
+    amount_total: amountTotal,
+    currency: 'usd',
+    livemode: false,
+  };
+}
+
+test('verified Stripe payment unlocks the job and emails a short-lived recovery link', async (t) => {
+  const job = createJob(await hashToken('original-access-token'));
+  const db = createDb(job);
+  const calls: Array<{ url: string; body?: string }> = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    calls.push({ url, body: typeof init?.body === 'string' ? init.body : undefined });
+    if (url.includes('/v1/checkout/sessions/')) {
+      return new Response(JSON.stringify(checkoutSession()), { status: 200 });
+    }
+    if (url === 'https://api.resend.com/emails') {
+      return new Response(JSON.stringify({ id: 'email_test_123' }), { status: 200 });
+    }
+    throw new Error(`Unexpected fetch: ${url}`);
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const paid = await markPaidFromStripeSession({
+    db,
+    env: {
+      STRIPE_SECRET_KEY: 'sk_test_example',
+      RESEND_API_KEY: 're_test_example',
+      RESEND_FROM_EMAIL: 'ImageSEOFix <support@example.com>',
+      NEXT_PUBLIC_SITE_URL: 'https://imageseofix.example',
+    },
+    job,
+    sessionId: 'cs_test_123',
+  });
+
+  assert.equal(paid, true);
+  assert.equal(job.payment_status, 'paid');
+  assert.ok(job.paid_at);
+  assert.ok(job.recovery_token_hash);
+  assert.ok(job.recovery_token_expires_at);
+  assert.equal(calls.length, 2);
+
+  const email = JSON.parse(calls[1].body ?? '{}') as { text?: string };
+  const link = email.text?.match(/https:\/\/imageseofix\.example\/self-serve\?[^\s]+/)?.[0];
+  assert.ok(link);
+  const recoveryToken = new URL(link).searchParams.get('token');
+  assert.ok(recoveryToken);
+  await assert.doesNotReject(() => verifyJobToken(job, recoveryToken));
+});
+
+test('amount mismatch never unlocks a job or triggers delivery email', async (t) => {
+  const job = createJob(await hashToken('original-access-token'));
+  const db = createDb(job);
+  let calls = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    calls += 1;
+    return new Response(JSON.stringify(checkoutSession(900)), { status: 200 });
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const paid = await markPaidFromStripeSession({
+    db,
+    env: { STRIPE_SECRET_KEY: 'sk_test_example' },
+    job,
+    sessionId: 'cs_test_123',
+  });
+
+  assert.equal(paid, false);
+  assert.equal(job.payment_status, 'unpaid');
+  assert.equal(job.recovery_token_hash, null);
+  assert.equal(calls, 1);
+});
