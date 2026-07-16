@@ -167,3 +167,31 @@ test('amount mismatch never unlocks a job or triggers delivery email', async (t)
   assert.equal(job.recovery_token_hash, null);
   assert.equal(calls, 1);
 });
+
+test('a verified older checkout session for the same job still unlocks delivery', async (t) => {
+  const job = createJob(await hashToken('original-access-token'));
+  job.checkout_session_id = 'cs_test_newer_open_session';
+  const db = createDb(job);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.includes('/v1/checkout/sessions/cs_test_123')) {
+      return new Response(JSON.stringify(checkoutSession()), { status: 200 });
+    }
+    throw new Error(`Unexpected fetch: ${url}`);
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const paid = await markPaidFromStripeSession({
+    db,
+    env: { STRIPE_SECRET_KEY: 'sk_test_example' },
+    job,
+    sessionId: 'cs_test_123',
+  });
+
+  assert.equal(paid, true);
+  assert.equal(job.payment_status, 'paid');
+  assert.equal(job.checkout_session_id, 'cs_test_123');
+});

@@ -84,6 +84,7 @@ export type CreateJobInput = {
 export type StripeCheckoutSession = {
   id: string;
   url?: string;
+  status?: string | null;
   client_reference_id?: string | null;
   payment_status?: string | null;
   amount_total?: number | null;
@@ -802,13 +803,31 @@ export function isExpectedPaidCheckoutSession(input: {
   const { job, session } = input;
 
   return (
-    Boolean(job.checkout_session_id) &&
-    session.id === job.checkout_session_id &&
     session.client_reference_id === job.id &&
     session.metadata?.job_id === job.id &&
     session.metadata?.product === 'imageseofix_self_serve_csv_v1' &&
     session.mode === 'payment' &&
     session.payment_status === 'paid' &&
+    session.amount_total === 1900 &&
+    session.currency?.toLowerCase() === 'usd' &&
+    session.livemode === stripeLivemodeFromSecret(input.env)
+  );
+}
+
+export function isReusableCheckoutSession(input: {
+  env: SelfServeEnv;
+  job: SelfServeJobRow;
+  session: StripeCheckoutSession;
+}) {
+  const { job, session } = input;
+
+  return (
+    session.status === 'open' &&
+    Boolean(session.url) &&
+    session.client_reference_id === job.id &&
+    session.metadata?.job_id === job.id &&
+    session.metadata?.product === 'imageseofix_self_serve_csv_v1' &&
+    session.mode === 'payment' &&
     session.amount_total === 1900 &&
     session.currency?.toLowerCase() === 'usd' &&
     session.livemode === stripeLivemodeFromSecret(input.env)

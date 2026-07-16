@@ -3,7 +3,9 @@ import {
   createCheckoutSession,
   getJob,
   getSelfServeBindings,
+  isReusableCheckoutSession,
   jsonError,
+  retrieveCheckoutSession,
   SelfServeError,
   updateCheckoutSession,
   verifyJobToken,
@@ -30,6 +32,32 @@ export async function POST(request: Request) {
     const job = await getJob(db, jobId);
 
     await verifyJobToken(job, token);
+
+    if (job.payment_status === 'paid') {
+      throw new SelfServeError(
+        'This cleanup job is already paid. Reopen its secure job link to download the CSV.',
+        409
+      );
+    }
+
+    if (job.checkout_session_id) {
+      const existing = await retrieveCheckoutSession(env, job.checkout_session_id);
+      if (isReusableCheckoutSession({ env, job, session: existing })) {
+        return Response.json(
+          {
+            checkoutUrl: existing.url,
+            sessionId: existing.id,
+            reused: true,
+          },
+          {
+            headers: {
+              'Cache-Control': 'no-store',
+              'X-Content-Type-Options': 'nosniff',
+            },
+          }
+        );
+      }
+    }
 
     const session = await createCheckoutSession({
       env,
