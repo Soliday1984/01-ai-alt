@@ -3,6 +3,7 @@ import {
   getSelfServeBindings,
   jsonError,
   markPaidFromStripeSession,
+  markJobDownloaded,
   SelfServeError,
   verifyJobToken,
 } from '@/lib/self-serve/server';
@@ -46,6 +47,8 @@ export async function GET(request: Request, context: RouteContext) {
     if (!object?.body) {
       throw new SelfServeError('Cleaned CSV was not found. Contact support with your job ID.', 404);
     }
+
+    await markJobDownloaded(db, job.id);
 
     return new Response(object.body, {
       headers: {

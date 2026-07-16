@@ -1,9 +1,8 @@
 import {
   getJob,
   getSelfServeBindings,
-  isExpectedPaidCheckoutSession,
   jsonError,
-  markJobPaid,
+  markPaidFromStripeSession,
   SelfServeError,
   verifyStripeWebhookSignature,
 } from '@/lib/self-serve/server';
@@ -74,20 +73,15 @@ export async function POST(request: Request) {
     }
 
     const job = await getJob(db, jobId);
-    if (
-      !isExpectedPaidCheckoutSession({
-        env,
-        job,
-        session: {
-          ...session,
-          id: session.id,
-        },
-      })
-    ) {
-      return Response.json({ received: true, ignored: true });
+    const verified = await markPaidFromStripeSession({
+      db,
+      env,
+      job,
+      sessionId: session.id,
+    });
+    if (!verified) {
+      throw new SelfServeError('Stripe payment verification did not match this job.', 409);
     }
-
-    await markJobPaid(db, jobId, session.id);
 
     return Response.json(
       { received: true },

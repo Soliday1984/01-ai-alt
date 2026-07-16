@@ -53,6 +53,9 @@ jobs:
       - name: Validate Cloudflare deployment
         run: pnpm exec wrangler deploy --dry-run
 
+      - name: Apply Cloudflare D1 migrations
+        run: pnpm exec wrangler d1 migrations apply imageseofix --remote
+
       - name: Deploy to Cloudflare Workers
         id: deploy
         shell: bash

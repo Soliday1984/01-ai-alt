@@ -66,6 +66,11 @@ type JobStatus = {
     warnings: string[];
     createdAt: string;
     paidAt: string | null;
+    firstDownloadedAt: string | null;
+    downloadCount: number;
+    importStatus: 'success' | 'issue' | 'not_imported' | null;
+    importFeedback: string | null;
+    importReportedAt: string | null;
   };
   canDownload: boolean;
   downloadUrl: string | null;
@@ -117,6 +122,10 @@ export function SelfServeClient() {
   const [isChecking, setIsChecking] = useState(false);
   const [isTurnstileReady, setIsTurnstileReady] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState('');
+  const [importStatus, setImportStatus] = useState<'success' | 'issue' | 'not_imported' | ''>('');
+  const [importFeedback, setImportFeedback] = useState('');
+  const [isReportingImport, setIsReportingImport] = useState(false);
+  const [importReported, setImportReported] = useState(false);
 
   const stats = jobStatus
     ? mergeStatsFromStatus(jobStatus)
@@ -197,8 +206,10 @@ export function SelfServeClient() {
         setJobStatus(payload);
         trackEvent('self_serve_status_loaded', {
           paid: payload.canDownload,
-          jobId,
         });
+        setImportStatus(payload.job.importStatus ?? '');
+        setImportFeedback(payload.job.importFeedback ?? '');
+        setImportReported(Boolean(payload.job.importReportedAt));
       } catch (caught) {
         if (controller.signal.aborted) {
           return;
@@ -328,7 +339,7 @@ export function SelfServeClient() {
       }
 
       trackEvent('self_serve_checkout_start', {
-        jobId: createdJob.jobId,
+        imageRows: createdJob.stats.processedImageRows,
       });
       window.location.href = payload.checkoutUrl;
     } catch (caught) {
@@ -348,9 +359,39 @@ export function SelfServeClient() {
     }
 
     trackEvent('self_serve_csv_download', {
-      jobId: jobStatus.job.id,
+      downloads: jobStatus.job.downloadCount + 1,
     });
     window.location.href = jobStatus.downloadUrl;
+  }
+
+  async function reportImportFeedback() {
+    if (!createdJob || !jobStatus?.canDownload || !importStatus) {
+      setError('Choose an import result before submitting feedback.');
+      return;
+    }
+
+    setIsReportingImport(true);
+    setError('');
+    try {
+      const response = await fetch(
+        `/api/self-serve/jobs/${encodeURIComponent(createdJob.jobId)}/feedback?token=${encodeURIComponent(createdJob.token)}`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ status: importStatus, feedback: importFeedback }),
+        }
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+
+      setImportReported(true);
+      trackEvent('self_serve_import_feedback', { status: importStatus });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to save import feedback.');
+    } finally {
+      setIsReportingImport(false);
+    }
   }
 
   return (
@@ -593,6 +634,52 @@ export function SelfServeClient() {
                 .
               </p>
             ) : null}
+            {jobStatus?.canDownload ? (
+              <div className="mt-5 rounded-lg border bg-muted/30 p-4">
+                <p className="text-sm font-medium">Did Shopify import preview accept this CSV?</p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Run Shopify&apos;s import preview before the final import, then share the result.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {[
+                    ['success', 'Preview passed'],
+                    ['issue', 'I found an issue'],
+                    ['not_imported', 'Not imported yet'],
+                  ].map(([value, label]) => (
+                    <Button
+                      key={value}
+                      type="button"
+                      size="sm"
+                      variant={importStatus === value ? 'default' : 'outline'}
+                      onClick={() => setImportStatus(value as typeof importStatus)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+                <textarea
+                  value={importFeedback}
+                  onChange={(event) => setImportFeedback(event.target.value.slice(0, 500))}
+                  maxLength={500}
+                  placeholder="Optional: tell us what Shopify showed."
+                  className="mt-3 min-h-20 w-full rounded-md border bg-background p-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                />
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={reportImportFeedback}
+                    disabled={isReportingImport || !importStatus}
+                  >
+                    {isReportingImport ? <Loader2 className="size-4 animate-spin" /> : null}
+                    {importReported ? 'Update import feedback' : 'Save import feedback'}
+                  </Button>
+                  {importReported ? (
+                    <span className="text-xs text-muted-foreground">Feedback saved. Thank you.</span>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -614,6 +701,13 @@ export function SelfServeClient() {
             </p>
           </div>
         </div>
+        <p className="text-center text-sm text-muted-foreground">
+          Lost your secure job link?{' '}
+          <a className="font-medium text-primary hover:underline" href="/self-serve/recover">
+            Recover it by email
+          </a>
+          .
+        </p>
       </section>
     </div>
   );

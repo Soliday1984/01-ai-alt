@@ -5,7 +5,8 @@ import type { SelfServeCsvStats } from './csv';
 type D1PreparedStatement = {
   bind: (...values: unknown[]) => D1PreparedStatement;
   first: <T = unknown>() => Promise<T | null>;
-  run: () => Promise<unknown>;
+  all: <T = unknown>() => Promise<{ results?: T[] }>;
+  run: () => Promise<{ meta?: { changes?: number } }>;
 };
 
 type D1DatabaseBinding = {
@@ -29,6 +30,8 @@ type SelfServeEnv = CloudflareEnv & {
   STRIPE_WEBHOOK_SECRET?: string;
   STRIPE_STARTER_PRICE_ID?: string;
   TURNSTILE_SECRET_KEY?: string;
+  RESEND_API_KEY?: string;
+  RESEND_FROM_EMAIL?: string;
   NEXT_PUBLIC_SITE_URL?: string;
   NEXT_PUBLIC_SELF_SERVE_ENABLED?: string;
   NEXT_PUBLIC_TURNSTILE_SITE_KEY?: string;
@@ -59,6 +62,13 @@ export type SelfServeJobRow = {
   created_at: string;
   updated_at: string;
   paid_at: string | null;
+  first_downloaded_at: string | null;
+  download_count: number;
+  import_status: string | null;
+  import_feedback: string | null;
+  import_reported_at: string | null;
+  recovery_token_hash: string | null;
+  recovery_token_expires_at: string | null;
 };
 
 export type CreateJobInput = {
@@ -255,7 +265,17 @@ export async function verifyJobToken(job: SelfServeJobRow, token: string) {
   }
 
   const tokenHash = await hashToken(token);
-  if (tokenHash !== job.token_hash) {
+  const hasOriginalToken = timingSafeHexEqual(tokenHash, job.token_hash);
+  const recoveryExpiresAt = job.recovery_token_expires_at
+    ? Date.parse(job.recovery_token_expires_at)
+    : Number.NaN;
+  const hasRecoveryToken =
+    Boolean(job.recovery_token_hash) &&
+    Number.isFinite(recoveryExpiresAt) &&
+    recoveryExpiresAt > Date.now() &&
+    timingSafeHexEqual(tokenHash, job.recovery_token_hash ?? '');
+
+  if (!hasOriginalToken && !hasRecoveryToken) {
     throw new SelfServeError('Invalid job token.', 403);
   }
 }
@@ -349,17 +369,211 @@ export async function markJobPaid(
   checkoutSessionId: string
 ) {
   const now = new Date().toISOString();
-  await db
+  const result = await db
     .prepare(
       `UPDATE self_serve_jobs
        SET payment_status = 'paid',
            checkout_session_id = ?,
            paid_at = COALESCE(paid_at, ?),
            updated_at = ?
-       WHERE id = ?`
+       WHERE id = ? AND payment_status != 'paid'`
     )
     .bind(checkoutSessionId, now, now, jobId)
     .run();
+
+  return result.meta?.changes === 1;
+}
+
+export async function markJobDownloaded(db: D1DatabaseBinding, jobId: string) {
+  const now = new Date().toISOString();
+
+  await db
+    .prepare(
+      `UPDATE self_serve_jobs
+       SET first_downloaded_at = COALESCE(first_downloaded_at, ?),
+           download_count = download_count + 1,
+           updated_at = ?
+       WHERE id = ?`
+    )
+    .bind(now, now, jobId)
+    .run();
+}
+
+export async function saveImportFeedback(
+  db: D1DatabaseBinding,
+  jobId: string,
+  status: 'success' | 'issue' | 'not_imported',
+  feedback: string
+) {
+  const now = new Date().toISOString();
+
+  await db
+    .prepare(
+      `UPDATE self_serve_jobs
+       SET import_status = ?,
+           import_feedback = ?,
+           import_reported_at = ?,
+           updated_at = ?
+       WHERE id = ?`
+    )
+    .bind(status, feedback, now, now, jobId)
+    .run();
+}
+
+function recoveryTokenExpiresAt() {
+  return new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString();
+}
+
+export async function issueJobRecoveryLink(input: {
+  db: D1DatabaseBinding;
+  env: SelfServeEnv;
+  job: SelfServeJobRow;
+}) {
+  const token = createAccessToken();
+  const tokenHash = await hashToken(token);
+  const expiresAt = recoveryTokenExpiresAt();
+  const now = new Date().toISOString();
+
+  await input.db
+    .prepare(
+      `UPDATE self_serve_jobs
+       SET recovery_token_hash = ?,
+           recovery_token_expires_at = ?,
+           updated_at = ?
+       WHERE id = ?`
+    )
+    .bind(tokenHash, expiresAt, now, input.job.id)
+    .run();
+
+  const url = new URL('/self-serve', publicSiteUrl(input.env));
+  url.searchParams.set('job', input.job.id);
+  url.searchParams.set('token', token);
+
+  return { url: url.toString(), expiresAt };
+}
+
+function resendConfig(env: SelfServeEnv) {
+  const apiKey = env.RESEND_API_KEY || process.env.RESEND_API_KEY;
+  const from = env.RESEND_FROM_EMAIL || process.env.RESEND_FROM_EMAIL;
+  return apiKey && from ? { apiKey, from } : null;
+}
+
+export function hasEmailDeliveryConfig(env: SelfServeEnv) {
+  return Boolean(resendConfig(env));
+}
+
+export async function sendJobAccessEmail(input: {
+  env: SelfServeEnv;
+  job: SelfServeJobRow;
+  accessUrl: string;
+  expiresAt: string;
+  purpose: 'paid_delivery' | 'recovery';
+}) {
+  const config = resendConfig(input.env);
+  if (!config) {
+    console.warn(
+      JSON.stringify({
+        source: 'imageseofix-email',
+        event: 'email_skipped_missing_config',
+        purpose: input.purpose,
+      })
+    );
+    return false;
+  }
+
+  const subject =
+    input.purpose === 'paid_delivery'
+      ? 'Your ImageSEOFix cleaned CSV is ready'
+      : 'Your ImageSEOFix secure job link';
+  const expires = new Intl.DateTimeFormat('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'UTC',
+  }).format(new Date(input.expiresAt));
+  const text = [
+    input.purpose === 'paid_delivery'
+      ? 'Payment confirmed. Your cleaned Shopify Products CSV is ready to download.'
+      : 'Use this secure link to reopen your ImageSEOFix CSV cleanup job.',
+    '',
+    input.accessUrl,
+    '',
+    `This link expires ${expires} UTC. Do not forward it.`,
+    'Review Shopify import preview before the final import and keep your original CSV backup.',
+    '',
+    `Job ID: ${input.job.id}`,
+  ].join('\n');
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: config.from,
+        to: [input.job.email],
+        subject,
+        text,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error(
+        JSON.stringify({
+          source: 'imageseofix-email',
+          event: 'email_send_failed',
+          purpose: input.purpose,
+          status: response.status,
+        })
+      );
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        source: 'imageseofix-email',
+        event: 'email_send_threw',
+        purpose: input.purpose,
+        error: error instanceof Error ? error.name : 'unknown',
+      })
+    );
+    return false;
+  }
+}
+
+export async function sendPaidDeliveryEmail(input: {
+  db: D1DatabaseBinding;
+  env: SelfServeEnv;
+  job: SelfServeJobRow;
+}) {
+  if (!hasEmailDeliveryConfig(input.env)) {
+    console.warn(
+      JSON.stringify({
+        source: 'imageseofix-email',
+        event: 'paid_delivery_email_skipped_missing_config',
+      })
+    );
+    return false;
+  }
+
+  const link = await issueJobRecoveryLink(input);
+  return sendJobAccessEmail({
+    env: input.env,
+    job: input.job,
+    accessUrl: link.url,
+    expiresAt: link.expiresAt,
+    purpose: 'paid_delivery',
+  });
+}
+
+export async function getLatestJobByEmail(db: D1DatabaseBinding, email: string) {
+  return db
+    .prepare('SELECT * FROM self_serve_jobs WHERE email = ? ORDER BY created_at DESC LIMIT 1')
+    .bind(email)
+    .first<SelfServeJobRow>();
 }
 
 function requireStripeSecret(env: SelfServeEnv) {
@@ -620,7 +834,25 @@ export async function markPaidFromStripeSession(input: {
       session,
     })
   ) {
-    await markJobPaid(input.db, input.job.id, session.id);
+    const marked = await markJobPaid(input.db, input.job.id, session.id);
+    if (marked) {
+      console.log(
+        JSON.stringify({
+          source: 'imageseofix-event',
+          event: 'self_serve_payment_succeeded',
+          payload: {
+            processedImageRows: input.job.processed_image_rows,
+            changedRows: input.job.changed_rows,
+          },
+          ts: new Date().toISOString(),
+        })
+      );
+      await sendPaidDeliveryEmail({
+        db: input.db,
+        env: input.env,
+        job: input.job,
+      });
+    }
     return true;
   }
 

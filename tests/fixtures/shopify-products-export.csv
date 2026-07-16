@@ -1,0 +1,4 @@
+Handle,Title,Body (HTML),Vendor,Type,Tags,Published,Option1 Name,Option1 Value,Variant SKU,Variant Price,Image Src,Image Position,Image Alt Text,Status
+blue-linen-shirt,"Classic ""Blue"", Linen Shirt","<p>Breathable linen for warm days.</p>",Northwind,Shirts,"linen,summer",true,Size,Small,BLU-S,59.00,https://cdn.example.com/products/blue-linen-shirt-front.jpg,1,,active
+blue-linen-shirt,,,,,,,,,,,https://cdn.example.com/products/blue-linen-shirt-side.jpg,2,photo,active
+walnut-desk-lamp,Walnut Desk Lamp,"<p>Solid walnut lamp.</p>",Northwind,Lighting,"desk,walnut",true,Finish,Walnut,WDL-1,89.00,https://cdn.example.com/products/walnut-desk-lamp.png,1,Walnut desk lamp on a work desk,active

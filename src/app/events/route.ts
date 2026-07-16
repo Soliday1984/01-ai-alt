@@ -16,6 +16,13 @@ const allowedEvents = new Set([
   'store_scan_error',
   'store_scan_submit',
   'store_scan_success',
+  'self_serve_checkout_start',
+  'self_serve_csv_download',
+  'self_serve_csv_selected',
+  'self_serve_import_feedback',
+  'self_serve_job_created',
+  'self_serve_recovery_requested',
+  'self_serve_status_loaded',
 ]);
 const maxBodyBytes = 2_000;
 
