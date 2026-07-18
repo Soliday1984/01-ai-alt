@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   hashToken,
   markPaidFromStripeSession,
+  sendJobAccessEmail,
   verifyJobToken,
   type SelfServeJobRow,
 } from '../src/lib/self-serve/server.ts';
@@ -106,8 +107,8 @@ test('verified Stripe payment unlocks the job and emails a short-lived recovery 
     if (url.includes('/v1/checkout/sessions/')) {
       return new Response(JSON.stringify(checkoutSession()), { status: 200 });
     }
-    if (url === 'https://api.resend.com/emails') {
-      return new Response(JSON.stringify({ id: 'email_test_123' }), { status: 200 });
+    if (url === 'https://api.brevo.com/v3/smtp/email') {
+      return new Response(JSON.stringify({ messageId: '<email_test_123>' }), { status: 201 });
     }
     throw new Error(`Unexpected fetch: ${url}`);
   };
@@ -119,8 +120,9 @@ test('verified Stripe payment unlocks the job and emails a short-lived recovery 
     db,
     env: {
       STRIPE_SECRET_KEY: 'sk_test_example',
-      RESEND_API_KEY: 're_test_example',
-      RESEND_FROM_EMAIL: 'ImageSEOFix <support@example.com>',
+      EMAIL_PROVIDER: 'brevo',
+      BREVO_API_KEY: 'xkeysib-test-example',
+      BREVO_FROM_EMAIL: 'ImageSEOFix <support@example.com>',
       NEXT_PUBLIC_SITE_URL: 'https://imageseofix.example',
     },
     job,
@@ -134,8 +136,12 @@ test('verified Stripe payment unlocks the job and emails a short-lived recovery 
   assert.ok(job.recovery_token_expires_at);
   assert.equal(calls.length, 2);
 
-  const email = JSON.parse(calls[1].body ?? '{}') as { text?: string };
-  const link = email.text?.match(/https:\/\/imageseofix\.example\/self-serve\?[^\s]+/)?.[0];
+  const email = JSON.parse(calls[1].body ?? '{}') as {
+    sender?: { email?: string; name?: string };
+    textContent?: string;
+  };
+  assert.deepEqual(email.sender, { email: 'support@example.com', name: 'ImageSEOFix' });
+  const link = email.textContent?.match(/https:\/\/imageseofix\.example\/self-serve\?[^\s]+/)?.[0];
   assert.ok(link);
   const recoveryToken = new URL(link).searchParams.get('token');
   assert.ok(recoveryToken);
@@ -166,6 +172,41 @@ test('amount mismatch never unlocks a job or triggers delivery email', async (t)
   assert.equal(job.payment_status, 'unpaid');
   assert.equal(job.recovery_token_hash, null);
   assert.equal(calls, 1);
+});
+
+test('explicit Resend configuration remains supported during the Brevo migration', async (t) => {
+  const job = createJob(await hashToken('original-access-token'));
+  const originalFetch = globalThis.fetch;
+  let request: { url: string; authorization: string | null; body?: string } | null = null;
+  globalThis.fetch = async (input, init) => {
+    const headers = new Headers(init?.headers);
+    request = {
+      url: String(input),
+      authorization: headers.get('Authorization'),
+      body: typeof init?.body === 'string' ? init.body : undefined,
+    };
+    return new Response(JSON.stringify({ id: 'email_test_123' }), { status: 200 });
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const delivered = await sendJobAccessEmail({
+    env: {
+      EMAIL_PROVIDER: 'resend',
+      RESEND_API_KEY: 're_test_example',
+      RESEND_FROM_EMAIL: 'ImageSEOFix <support@example.com>',
+    },
+    job,
+    accessUrl: 'https://imageseofix.example/self-serve?job=job_test_paid&token=recovery-token',
+    expiresAt: '2026-07-25T00:00:00.000Z',
+    purpose: 'recovery',
+  });
+
+  assert.equal(delivered, true);
+  assert.equal(request?.url, 'https://api.resend.com/emails');
+  assert.equal(request?.authorization, 'Bearer re_test_example');
+  assert.match(request?.body ?? '', /recovery-token/);
 });
 
 test('a verified older checkout session for the same job still unlocks delivery', async (t) => {

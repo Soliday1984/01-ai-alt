@@ -30,6 +30,9 @@ type SelfServeEnv = CloudflareEnv & {
   STRIPE_WEBHOOK_SECRET?: string;
   STRIPE_STARTER_PRICE_ID?: string;
   TURNSTILE_SECRET_KEY?: string;
+  EMAIL_PROVIDER?: string;
+  BREVO_API_KEY?: string;
+  BREVO_FROM_EMAIL?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM_EMAIL?: string;
   NEXT_PUBLIC_SITE_URL?: string;
@@ -453,14 +456,50 @@ export async function issueJobRecoveryLink(input: {
   return { url: url.toString(), expiresAt };
 }
 
-function resendConfig(env: SelfServeEnv) {
-  const apiKey = env.RESEND_API_KEY || process.env.RESEND_API_KEY;
-  const from = env.RESEND_FROM_EMAIL || process.env.RESEND_FROM_EMAIL;
-  return apiKey && from ? { apiKey, from } : null;
+type EmailDeliveryConfig =
+  | { provider: 'brevo'; apiKey: string; from: string }
+  | { provider: 'resend'; apiKey: string; from: string };
+
+function emailDeliveryConfig(env: SelfServeEnv): EmailDeliveryConfig | null {
+  const provider = (env.EMAIL_PROVIDER || process.env.EMAIL_PROVIDER || '').trim().toLowerCase();
+  const brevoApiKey = env.BREVO_API_KEY || process.env.BREVO_API_KEY;
+  const brevoFrom = env.BREVO_FROM_EMAIL || process.env.BREVO_FROM_EMAIL;
+  const resendApiKey = env.RESEND_API_KEY || process.env.RESEND_API_KEY;
+  const resendFrom = env.RESEND_FROM_EMAIL || process.env.RESEND_FROM_EMAIL;
+
+  if (provider === 'brevo') {
+    return brevoApiKey && brevoFrom
+      ? { provider: 'brevo', apiKey: brevoApiKey, from: brevoFrom }
+      : null;
+  }
+
+  if (provider === 'resend') {
+    return resendApiKey && resendFrom
+      ? { provider: 'resend', apiKey: resendApiKey, from: resendFrom }
+      : null;
+  }
+
+  // Keep existing deployments working while allowing a new provider to opt in explicitly.
+  if (resendApiKey && resendFrom) {
+    return { provider: 'resend', apiKey: resendApiKey, from: resendFrom };
+  }
+  if (brevoApiKey && brevoFrom) {
+    return { provider: 'brevo', apiKey: brevoApiKey, from: brevoFrom };
+  }
+  return null;
 }
 
 export function hasEmailDeliveryConfig(env: SelfServeEnv) {
-  return Boolean(resendConfig(env));
+  return Boolean(emailDeliveryConfig(env));
+}
+
+function brevoSender(from: string) {
+  const match = from.trim().match(/^(.*?)\s*<([^<>\s]+@[^<>\s]+)>$/);
+  if (match) {
+    const name = match[1].trim().replace(/^['\"]|['\"]$/g, '');
+    return name ? { email: match[2], name } : { email: match[2] };
+  }
+  return { email: from.trim() };
 }
 
 export async function sendJobAccessEmail(input: {
@@ -470,7 +509,7 @@ export async function sendJobAccessEmail(input: {
   expiresAt: string;
   purpose: 'paid_delivery' | 'recovery';
 }) {
-  const config = resendConfig(input.env);
+  const config = emailDeliveryConfig(input.env);
   if (!config) {
     console.warn(
       JSON.stringify({
@@ -505,25 +544,48 @@ export async function sendJobAccessEmail(input: {
   ].join('\n');
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: config.from,
-        to: [input.job.email],
-        subject,
-        text,
-      }),
-    });
+    const response = await fetch(
+      config.provider === 'brevo'
+        ? 'https://api.brevo.com/v3/smtp/email'
+        : 'https://api.resend.com/emails',
+      {
+        method: 'POST',
+        headers:
+          config.provider === 'brevo'
+            ? {
+                Accept: 'application/json',
+                'api-key': config.apiKey,
+                'Content-Type': 'application/json',
+              }
+            : {
+                Authorization: `Bearer ${config.apiKey}`,
+                'Content-Type': 'application/json',
+              },
+        body: JSON.stringify(
+          config.provider === 'brevo'
+            ? {
+                sender: brevoSender(config.from),
+                to: [{ email: input.job.email }],
+                subject,
+                textContent: text,
+                tags: ['imageseofix', input.purpose],
+              }
+            : {
+                from: config.from,
+                to: [input.job.email],
+                subject,
+                text,
+              }
+        ),
+      }
+    );
 
     if (!response.ok) {
       console.error(
         JSON.stringify({
           source: 'imageseofix-email',
           event: 'email_send_failed',
+          provider: config.provider,
           purpose: input.purpose,
           status: response.status,
         })
@@ -537,6 +599,7 @@ export async function sendJobAccessEmail(input: {
       JSON.stringify({
         source: 'imageseofix-email',
         event: 'email_send_threw',
+        provider: config.provider,
         purpose: input.purpose,
         error: error instanceof Error ? error.name : 'unknown',
       })

@@ -33,17 +33,31 @@ pnpm exec wrangler d1 execute imageseofix --remote --command "SELECT id, payment
 ## Email delivery configuration
 
 Payment receipts and secure recovery links are optional delivery aids; a paid
-download never depends on email. To enable them, verify an ImageSEOFix sending
-domain in Resend, then add these Worker secrets:
+download never depends on email. The selected provider must have a verified
+ImageSEOFix sending domain.
+
+For Brevo, add these Worker secrets:
+
+```powershell
+pnpm exec wrangler secret put EMAIL_PROVIDER
+# Enter: brevo
+pnpm exec wrangler secret put BREVO_API_KEY
+pnpm exec wrangler secret put BREVO_FROM_EMAIL
+```
+
+Set `BREVO_FROM_EMAIL` to a verified sender such as
+`ImageSEOFix <support@imageseofix.com>`.
+
+The previous Resend setup remains supported while migrating:
 
 ```powershell
 pnpm exec wrangler secret put RESEND_API_KEY
 pnpm exec wrangler secret put RESEND_FROM_EMAIL
 ```
 
-Set `RESEND_FROM_EMAIL` to a verified sender such as
-`ImageSEOFix <support@imageseofix.com>`. After deployment, create a test job,
-use the recovery page, and verify the received link expires after seven days.
+Set `EMAIL_PROVIDER=resend` only when explicitly using Resend. After
+configuration, create a test job, use the recovery page, and verify the
+received link expires after seven days.
 
 ## Safety
 
