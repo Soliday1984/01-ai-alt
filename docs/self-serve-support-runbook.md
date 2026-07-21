@@ -59,6 +59,21 @@ Set `EMAIL_PROVIDER=resend` only when explicitly using Resend. After
 configuration, create a test job, use the recovery page, and verify the
 received link expires after seven days.
 
+For Mailjet, add these Worker secrets after verifying the sender domain in
+Mailjet. The free tier is sufficient for early validation, but keep the
+provider selection explicit:
+
+```powershell
+pnpm exec wrangler secret put EMAIL_PROVIDER
+# Enter: mailjet
+pnpm exec wrangler secret put MAILJET_API_KEY
+pnpm exec wrangler secret put MAILJET_API_SECRET
+pnpm exec wrangler secret put MAILJET_FROM_EMAIL
+```
+
+Set `MAILJET_FROM_EMAIL` to `ImageSEOFix <support@imageseofix.com>`. Never put
+provider credentials in GitHub variables, repository files, logs, or chat.
+
 ## Safety
 
 - Never paste Stripe secrets, job tokens, or CSV contents into tickets, Git,

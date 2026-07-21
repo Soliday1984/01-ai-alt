@@ -209,6 +209,49 @@ test('explicit Resend configuration remains supported during the Brevo migration
   assert.match(request?.body ?? '', /recovery-token/);
 });
 
+test('explicit Mailjet configuration sends the same secure delivery link', async (t) => {
+  const job = createJob(await hashToken('original-access-token'));
+  const originalFetch = globalThis.fetch;
+  let request: { url: string; authorization: string | null; body?: string } | null = null;
+  globalThis.fetch = async (input, init) => {
+    const headers = new Headers(init?.headers);
+    request = {
+      url: String(input),
+      authorization: headers.get('Authorization'),
+      body: typeof init?.body === 'string' ? init.body : undefined,
+    };
+    return new Response(JSON.stringify({ Messages: [{ Status: 'success' }] }), { status: 200 });
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const delivered = await sendJobAccessEmail({
+    env: {
+      EMAIL_PROVIDER: 'mailjet',
+      MAILJET_API_KEY: 'mj_api_key',
+      MAILJET_API_SECRET: 'mj_api_secret',
+      MAILJET_FROM_EMAIL: 'ImageSEOFix <support@example.com>',
+    },
+    job,
+    accessUrl: 'https://imageseofix.example/self-serve?job=job_test_paid&token=recovery-token',
+    expiresAt: '2026-07-25T00:00:00.000Z',
+    purpose: 'paid_delivery',
+  });
+
+  assert.equal(delivered, true);
+  assert.equal(request?.url, 'https://api.mailjet.com/v3.1/send');
+  assert.equal(request?.authorization, `Basic ${btoa('mj_api_key:mj_api_secret')}`);
+  const email = JSON.parse(request?.body ?? '{}') as {
+    Messages?: Array<{ From?: { Email?: string; Name?: string }; TextPart?: string }>;
+  };
+  assert.deepEqual(email.Messages?.[0]?.From, {
+    Email: 'support@example.com',
+    Name: 'ImageSEOFix',
+  });
+  assert.match(email.Messages?.[0]?.TextPart ?? '', /recovery-token/);
+});
+
 test('a verified older checkout session for the same job still unlocks delivery', async (t) => {
   const job = createJob(await hashToken('original-access-token'));
   job.checkout_session_id = 'cs_test_newer_open_session';

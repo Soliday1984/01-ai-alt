@@ -33,6 +33,9 @@ type SelfServeEnv = CloudflareEnv & {
   EMAIL_PROVIDER?: string;
   BREVO_API_KEY?: string;
   BREVO_FROM_EMAIL?: string;
+  MAILJET_API_KEY?: string;
+  MAILJET_API_SECRET?: string;
+  MAILJET_FROM_EMAIL?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM_EMAIL?: string;
   NEXT_PUBLIC_SITE_URL?: string;
@@ -458,12 +461,16 @@ export async function issueJobRecoveryLink(input: {
 
 type EmailDeliveryConfig =
   | { provider: 'brevo'; apiKey: string; from: string }
+  | { provider: 'mailjet'; apiKey: string; apiSecret: string; from: string }
   | { provider: 'resend'; apiKey: string; from: string };
 
 function emailDeliveryConfig(env: SelfServeEnv): EmailDeliveryConfig | null {
   const provider = (env.EMAIL_PROVIDER || process.env.EMAIL_PROVIDER || '').trim().toLowerCase();
   const brevoApiKey = env.BREVO_API_KEY || process.env.BREVO_API_KEY;
   const brevoFrom = env.BREVO_FROM_EMAIL || process.env.BREVO_FROM_EMAIL;
+  const mailjetApiKey = env.MAILJET_API_KEY || process.env.MAILJET_API_KEY;
+  const mailjetApiSecret = env.MAILJET_API_SECRET || process.env.MAILJET_API_SECRET;
+  const mailjetFrom = env.MAILJET_FROM_EMAIL || process.env.MAILJET_FROM_EMAIL;
   const resendApiKey = env.RESEND_API_KEY || process.env.RESEND_API_KEY;
   const resendFrom = env.RESEND_FROM_EMAIL || process.env.RESEND_FROM_EMAIL;
 
@@ -479,12 +486,31 @@ function emailDeliveryConfig(env: SelfServeEnv): EmailDeliveryConfig | null {
       : null;
   }
 
+  if (provider === 'mailjet') {
+    return mailjetApiKey && mailjetApiSecret && mailjetFrom
+      ? {
+          provider: 'mailjet',
+          apiKey: mailjetApiKey,
+          apiSecret: mailjetApiSecret,
+          from: mailjetFrom,
+        }
+      : null;
+  }
+
   // Keep existing deployments working while allowing a new provider to opt in explicitly.
   if (resendApiKey && resendFrom) {
     return { provider: 'resend', apiKey: resendApiKey, from: resendFrom };
   }
   if (brevoApiKey && brevoFrom) {
     return { provider: 'brevo', apiKey: brevoApiKey, from: brevoFrom };
+  }
+  if (mailjetApiKey && mailjetApiSecret && mailjetFrom) {
+    return {
+      provider: 'mailjet',
+      apiKey: mailjetApiKey,
+      apiSecret: mailjetApiSecret,
+      from: mailjetFrom,
+    };
   }
   return null;
 }
@@ -500,6 +526,13 @@ function brevoSender(from: string) {
     return name ? { email: match[2], name } : { email: match[2] };
   }
   return { email: from.trim() };
+}
+
+function mailjetSender(from: string) {
+  const sender = brevoSender(from);
+  return sender.name
+    ? { Email: sender.email, Name: sender.name }
+    : { Email: sender.email };
 }
 
 export async function sendJobAccessEmail(input: {
@@ -547,7 +580,9 @@ export async function sendJobAccessEmail(input: {
     const response = await fetch(
       config.provider === 'brevo'
         ? 'https://api.brevo.com/v3/smtp/email'
-        : 'https://api.resend.com/emails',
+        : config.provider === 'mailjet'
+          ? 'https://api.mailjet.com/v3.1/send'
+          : 'https://api.resend.com/emails',
       {
         method: 'POST',
         headers:
@@ -557,6 +592,12 @@ export async function sendJobAccessEmail(input: {
                 'api-key': config.apiKey,
                 'Content-Type': 'application/json',
               }
+            : config.provider === 'mailjet'
+              ? {
+                  Accept: 'application/json',
+                  Authorization: `Basic ${btoa(`${config.apiKey}:${config.apiSecret}`)}`,
+                  'Content-Type': 'application/json',
+                }
             : {
                 Authorization: `Bearer ${config.apiKey}`,
                 'Content-Type': 'application/json',
@@ -570,6 +611,18 @@ export async function sendJobAccessEmail(input: {
                 textContent: text,
                 tags: ['imageseofix', input.purpose],
               }
+            : config.provider === 'mailjet'
+              ? {
+                  Messages: [
+                    {
+                      From: mailjetSender(config.from),
+                      To: [{ Email: input.job.email }],
+                      Subject: subject,
+                      TextPart: text,
+                      CustomCampaign: `imageseofix-${input.purpose}`,
+                    },
+                  ],
+                }
             : {
                 from: config.from,
                 to: [input.job.email],
