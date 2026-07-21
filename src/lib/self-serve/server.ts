@@ -535,6 +535,26 @@ function mailjetSender(from: string) {
     : { Email: sender.email };
 }
 
+async function providerAcceptedEmail(input: {
+  provider: EmailDeliveryConfig['provider'];
+  response: Response;
+}) {
+  if (!input.response.ok) {
+    return false;
+  }
+  if (input.provider !== 'mailjet') {
+    return true;
+  }
+
+  const payload = (await input.response.json().catch(() => null)) as
+    | { Messages?: Array<{ Status?: string }> }
+    | null;
+  return Boolean(
+    payload?.Messages?.length &&
+      payload.Messages.every((message) => message.Status?.toLowerCase() === 'success')
+  );
+}
+
 export async function sendJobAccessEmail(input: {
   env: SelfServeEnv;
   job: SelfServeJobRow;
@@ -633,7 +653,7 @@ export async function sendJobAccessEmail(input: {
       }
     );
 
-    if (!response.ok) {
+    if (!(await providerAcceptedEmail({ provider: config.provider, response }))) {
       console.error(
         JSON.stringify({
           source: 'imageseofix-email',
@@ -641,6 +661,7 @@ export async function sendJobAccessEmail(input: {
           provider: config.provider,
           purpose: input.purpose,
           status: response.status,
+          responseAccepted: response.ok,
         })
       );
       return false;

@@ -252,6 +252,31 @@ test('explicit Mailjet configuration sends the same secure delivery link', async
   assert.match(email.Messages?.[0]?.TextPart ?? '', /recovery-token/);
 });
 
+test('Mailjet per-message rejection is not treated as successful delivery', async (t) => {
+  const job = createJob(await hashToken('original-access-token'));
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ Messages: [{ Status: 'error' }] }), { status: 200 });
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const delivered = await sendJobAccessEmail({
+    env: {
+      EMAIL_PROVIDER: 'mailjet',
+      MAILJET_API_KEY: 'mj_api_key',
+      MAILJET_API_SECRET: 'mj_api_secret',
+      MAILJET_FROM_EMAIL: 'ImageSEOFix <support@example.com>',
+    },
+    job,
+    accessUrl: 'https://imageseofix.example/self-serve?job=job_test_paid&token=recovery-token',
+    expiresAt: '2026-07-25T00:00:00.000Z',
+    purpose: 'paid_delivery',
+  });
+
+  assert.equal(delivered, false);
+});
+
 test('a verified older checkout session for the same job still unlocks delivery', async (t) => {
   const job = createJob(await hashToken('original-access-token'));
   job.checkout_session_id = 'cs_test_newer_open_session';
