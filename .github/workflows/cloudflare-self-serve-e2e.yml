@@ -1,0 +1,70 @@
+name: Configure ImageSEOFix E2E Access
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Configure or clear the short-lived internal E2E access.
+        required: true
+        default: configure
+        type: choice
+        options:
+          - configure
+          - clear
+
+concurrency:
+  group: cloudflare-self-serve-e2e
+  cancel-in-progress: false
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  configure:
+    name: ${{ inputs.action }} internal E2E access
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Configure internal E2E secrets
+        if: inputs.action == 'configure'
+        env:
+          IMAGESEOFIX_E2E_EMAIL: ${{ secrets.IMAGESEOFIX_E2E_EMAIL }}
+          STRIPE_E2E_PROMOTION_CODE: ${{ secrets.STRIPE_E2E_PROMOTION_CODE }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$IMAGESEOFIX_E2E_EMAIL"
+          test -n "$STRIPE_E2E_PROMOTION_CODE"
+          printf '%s' "$IMAGESEOFIX_E2E_EMAIL" | pnpm exec wrangler secret put IMAGESEOFIX_E2E_EMAIL
+          printf '%s' "$STRIPE_E2E_PROMOTION_CODE" | pnpm exec wrangler secret put STRIPE_E2E_PROMOTION_CODE
+          echo "Internal E2E secrets configured without exposing their values."
+
+      - name: Clear internal E2E secrets
+        if: inputs.action == 'clear'
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm exec wrangler secret delete IMAGESEOFIX_E2E_EMAIL || true
+          pnpm exec wrangler secret delete STRIPE_E2E_PROMOTION_CODE || true
+          echo "Internal E2E secrets cleared."
