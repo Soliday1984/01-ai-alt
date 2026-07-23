@@ -1,0 +1,55 @@
+name: Cloudflare R2 Lifecycle
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: cloudflare-r2-lifecycle
+  cancel-in-progress: false
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  sync-self-serve-retention:
+    name: Keep self-serve CSVs for 30 days
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Ensure self-serve expiration rule
+        shell: bash
+        run: |
+          set -euo pipefail
+          if pnpm exec wrangler r2 bucket lifecycle list imageseofix-uploads | grep -Fq 'self-serve-expire'; then
+            echo 'self-serve-expire already exists.'
+          else
+            pnpm exec wrangler r2 bucket lifecycle add \
+              imageseofix-uploads \
+              self-serve-expire \
+              self-serve/ \
+              --expire-days 30 \
+              --force
+          fi
+          pnpm exec wrangler r2 bucket lifecycle list imageseofix-uploads
