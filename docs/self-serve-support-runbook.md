@@ -54,7 +54,20 @@ Use this only for a controlled end-to-end check. It is not a public discount,
 does not create revenue, and is intentionally unavailable to ordinary users.
 
 1. In the relevant Stripe mode, create a 100% promotion code restricted to the
-   ImageSEOFix product, with one redemption and a short expiration.
+   ImageSEOFix product, with one redemption and a short expiration. Before
+   putting its ID in any Worker secret, verify the underlying coupon is scoped
+   to the one intended product. A missing `applies_to.products` value means
+   the coupon is account-wide and must not be used, even for an internal test.
+
+```powershell
+stripe promotion_codes retrieve promo_example --live
+stripe coupons retrieve coupon_example --live
+```
+
+The coupon response must list only the ImageSEOFix product under
+`applies_to.products`. If it is absent or lists another product, deactivate
+the promotion code and create a new product-restricted coupon before
+continuing.
 2. Set the exact internal tester mailbox and promotion code ID as Worker
    secrets. Do not create GitHub variables for either value.
 
