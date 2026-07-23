@@ -97,7 +97,12 @@ export async function POST(request: Request) {
     assertSelfServeEnabled(env);
     rejectOversizedRequest(request);
 
-    const body = await request.json();
+    const body = (await request.json()) as {
+      email?: unknown;
+      storeUrl?: unknown;
+      csv?: unknown;
+      turnstileToken?: unknown;
+    };
     const email = normalizeEmail(body?.email);
     const storeUrl = normalizeStoreUrl(body?.storeUrl);
     const csv = normalizeCsv(body?.csv);

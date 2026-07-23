@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
     assertSelfServeEnabled(env);
 
-    const body = await request.json();
+    const body = (await request.json()) as { jobId?: unknown; token?: unknown };
     const jobId = readString(body?.jobId, 'Job ID');
     const token = readString(body?.token, 'Job token');
     const job = await getJob(db, jobId);

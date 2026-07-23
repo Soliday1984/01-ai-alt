@@ -268,7 +268,7 @@ function extractImageRows(productUrl: URL, html: string): ScanRow[] {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as { storeUrl?: unknown };
     const origin = normalizeStoreUrl(body?.storeUrl);
     const productUrls = await discoverProductUrls(origin);
 

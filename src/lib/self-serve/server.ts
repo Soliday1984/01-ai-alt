@@ -22,7 +22,9 @@ type R2BucketBinding = {
   get: (key: string) => Promise<R2ObjectBody | null>;
 };
 
-type SelfServeEnv = CloudflareEnv & {
+type SelfServeEnv = Omit<CloudflareEnv, 'EMAIL'> & {
+  // Optional here keeps Node-based unit tests and local development from sending real email.
+  EMAIL?: CloudflareEnv['EMAIL'];
   IMAGESEOFIX_DB?: D1DatabaseBinding;
   IMAGESEOFIX_UPLOADS?: R2BucketBinding;
   SELF_SERVE_ENABLED?: string;
@@ -31,6 +33,7 @@ type SelfServeEnv = CloudflareEnv & {
   STRIPE_STARTER_PRICE_ID?: string;
   TURNSTILE_SECRET_KEY?: string;
   EMAIL_PROVIDER?: string;
+  CLOUDFLARE_EMAIL_FROM?: string;
   BREVO_API_KEY?: string;
   BREVO_FROM_EMAIL?: string;
   MAILJET_API_KEY?: string;
@@ -460,12 +463,14 @@ export async function issueJobRecoveryLink(input: {
 }
 
 type EmailDeliveryConfig =
+  | { provider: 'cloudflare'; from: string; email: NonNullable<SelfServeEnv['EMAIL']> }
   | { provider: 'brevo'; apiKey: string; from: string }
   | { provider: 'mailjet'; apiKey: string; apiSecret: string; from: string }
   | { provider: 'resend'; apiKey: string; from: string };
 
 function emailDeliveryConfig(env: SelfServeEnv): EmailDeliveryConfig | null {
   const provider = (env.EMAIL_PROVIDER || process.env.EMAIL_PROVIDER || '').trim().toLowerCase();
+  const cloudflareFrom = env.CLOUDFLARE_EMAIL_FROM || process.env.CLOUDFLARE_EMAIL_FROM;
   const brevoApiKey = env.BREVO_API_KEY || process.env.BREVO_API_KEY;
   const brevoFrom = env.BREVO_FROM_EMAIL || process.env.BREVO_FROM_EMAIL;
   const mailjetApiKey = env.MAILJET_API_KEY || process.env.MAILJET_API_KEY;
@@ -473,6 +478,12 @@ function emailDeliveryConfig(env: SelfServeEnv): EmailDeliveryConfig | null {
   const mailjetFrom = env.MAILJET_FROM_EMAIL || process.env.MAILJET_FROM_EMAIL;
   const resendApiKey = env.RESEND_API_KEY || process.env.RESEND_API_KEY;
   const resendFrom = env.RESEND_FROM_EMAIL || process.env.RESEND_FROM_EMAIL;
+
+  if (provider === 'cloudflare') {
+    return env.EMAIL && cloudflareFrom
+      ? { provider: 'cloudflare', email: env.EMAIL, from: cloudflareFrom }
+      : null;
+  }
 
   if (provider === 'brevo') {
     return brevoApiKey && brevoFrom
@@ -512,6 +523,9 @@ function emailDeliveryConfig(env: SelfServeEnv): EmailDeliveryConfig | null {
       from: mailjetFrom,
     };
   }
+  if (env.EMAIL && cloudflareFrom) {
+    return { provider: 'cloudflare', email: env.EMAIL, from: cloudflareFrom };
+  }
   return null;
 }
 
@@ -533,6 +547,22 @@ function mailjetSender(from: string) {
   return sender.name
     ? { Email: sender.email, Name: sender.name }
     : { Email: sender.email };
+}
+
+function cloudflareSender(from: string): string | { email: string; name: string } {
+  const sender = brevoSender(from);
+  return sender.name ? { email: sender.email, name: sender.name } : sender.email;
+}
+
+function emailHtml(input: { accessUrl: string; expires: string; jobId: string; purpose: 'paid_delivery' | 'recovery' }) {
+  const escapedUrl = input.accessUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const escapedJobId = input.jobId.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const headline =
+    input.purpose === 'paid_delivery'
+      ? 'Your cleaned Shopify Products CSV is ready.'
+      : 'Your secure ImageSEOFix job link is ready.';
+
+  return `<p>${headline}</p><p><a href="${escapedUrl}">Open your secure job</a></p><p>This link expires ${input.expires} UTC. Do not forward it.</p><p>Review Shopify import preview before the final import and keep your original CSV backup.</p><p>Job ID: ${escapedJobId}</p>`;
 }
 
 async function providerAcceptedEmail(input: {
@@ -595,8 +625,25 @@ export async function sendJobAccessEmail(input: {
     '',
     `Job ID: ${input.job.id}`,
   ].join('\n');
+  const html = emailHtml({
+    accessUrl: input.accessUrl,
+    expires,
+    jobId: input.job.id,
+    purpose: input.purpose,
+  });
 
   try {
+    if (config.provider === 'cloudflare') {
+      await config.email.send({
+        to: input.job.email,
+        from: cloudflareSender(config.from),
+        subject,
+        html,
+        text,
+      });
+      return true;
+    }
+
     const response = await fetch(
       config.provider === 'brevo'
         ? 'https://api.brevo.com/v3/smtp/email'

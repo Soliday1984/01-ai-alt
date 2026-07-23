@@ -36,6 +36,25 @@ Payment receipts and secure recovery links are optional delivery aids; a paid
 download never depends on email. The selected provider must have a verified
 ImageSEOFix sending domain.
 
+### Cloudflare Email Service
+
+ImageSEOFix uses the native Worker `EMAIL` binding when `EMAIL_PROVIDER` is
+`cloudflare`. The binding is declared in `wrangler.jsonc`; it uses the
+Cloudflare Email Sending onboarding for `imageseofix.com`, so no email API key
+is stored in a Worker secret.
+
+The selected sender is versioned as non-secret Worker configuration:
+
+```text
+EMAIL_PROVIDER=cloudflare
+CLOUDFLARE_EMAIL_FROM=ImageSEOFix <support@imageseofix.com>
+```
+
+After deployment, use a real mailbox you control to request a recovery link.
+Check Cloudflare Email Sending activity logs and the recipient inbox. Do not
+test with invented recipient addresses because bounces damage sender
+reputation.
+
 For Brevo, add these Worker secrets:
 
 ```powershell

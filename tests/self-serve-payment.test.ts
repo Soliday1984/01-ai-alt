@@ -148,6 +148,40 @@ test('verified Stripe payment unlocks the job and emails a short-lived recovery 
   await assert.doesNotReject(() => verifyJobToken(job, recoveryToken));
 });
 
+test('Cloudflare Email binding sends a secure recovery link without a third-party API key', async () => {
+  const job = createJob(await hashToken('original-access-token'));
+  let message: {
+    to: string;
+    from: { email?: string; name?: string } | string;
+    subject: string;
+    text: string;
+    html: string;
+  } | null = null;
+
+  const delivered = await sendJobAccessEmail({
+    env: {
+      EMAIL_PROVIDER: 'cloudflare',
+      CLOUDFLARE_EMAIL_FROM: 'ImageSEOFix <support@imageseofix.com>',
+      EMAIL: {
+        async send(nextMessage) {
+          message = nextMessage;
+          return { messageId: 'cf-email-123' };
+        },
+      },
+    } as never,
+    job,
+    accessUrl: 'https://imageseofix.example/self-serve?job=job_test_paid&token=recovery-token',
+    expiresAt: '2026-07-25T00:00:00.000Z',
+    purpose: 'paid_delivery',
+  });
+
+  assert.equal(delivered, true);
+  assert.equal(message?.to, 'merchant@example.com');
+  assert.deepEqual(message?.from, { email: 'support@imageseofix.com', name: 'ImageSEOFix' });
+  assert.match(message?.text ?? '', /recovery-token/);
+  assert.match(message?.html ?? '', /recovery-token/);
+});
+
 test('amount mismatch never unlocks a job or triggers delivery email', async (t) => {
   const job = createJob(await hashToken('original-access-token'));
   const db = createDb(job);

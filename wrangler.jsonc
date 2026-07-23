@@ -4,6 +4,10 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-05-26",
   "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "EMAIL_PROVIDER": "cloudflare",
+    "CLOUDFLARE_EMAIL_FROM": "ImageSEOFix <support@imageseofix.com>"
+  },
   "workers_dev": true,
   "routes": [
     {
@@ -31,6 +35,11 @@
     {
       "binding": "IMAGESEOFIX_UPLOADS",
       "bucket_name": "imageseofix-uploads"
+    }
+  ],
+  "send_email": [
+    {
+      "name": "EMAIL"
     }
   ],
   "observability": {
