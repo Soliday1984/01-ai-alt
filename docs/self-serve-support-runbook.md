@@ -77,14 +77,9 @@ Changing any one of these conditions prevents an unlock.
 ## CSV retention
 
 Both the original and cleaned CSV are stored under the `self-serve/` prefix in
-the `imageseofix-uploads` R2 bucket. Configure a production R2 lifecycle rule
-to delete that prefix after 30 days once explicitly approved:
-
-```powershell
-pnpm exec wrangler r2 bucket lifecycle add imageseofix-uploads self-serve-expire self-serve/ --expire-days 30
-```
-
-Confirm first with:
+the `imageseofix-uploads` R2 bucket. Production has the
+`self-serve-expire` lifecycle rule enabled to delete that prefix after 30 days.
+Verify it with:
 
 ```powershell
 pnpm exec wrangler r2 bucket lifecycle list imageseofix-uploads

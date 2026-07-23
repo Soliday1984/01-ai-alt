@@ -70,12 +70,13 @@ export default function PrivacyPage() {
       <section>
         <h2>Retention and deletion</h2>
         <p>
-          We keep uploaded files, generated files, job records, and transaction
-          records only as long as reasonably needed to deliver the service,
-          provide support, prevent fraud, and meet legal or accounting duties.
-          You may request deletion of uploaded and generated CSV files. Some
-          payment or transaction records may need to be retained where required
-          by law.
+          Uploaded and generated CSV files are automatically deleted from active
+          file storage 30 days after the cleanup job is created. We keep job and
+          transaction records only as long as reasonably needed to deliver the
+          service, provide support, prevent fraud, and meet legal or accounting
+          duties. You may request earlier deletion of uploaded and generated CSV
+          files. Payment or transaction records may need to be retained where
+          required by law.
         </p>
       </section>
 
