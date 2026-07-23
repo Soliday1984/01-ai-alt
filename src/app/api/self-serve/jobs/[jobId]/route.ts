@@ -35,7 +35,7 @@ export async function GET(request: Request, context: RouteContext) {
     const { db, env } = await getSelfServeBindings();
     let job = await getJob(db, jobId);
 
-    await verifyJobToken(job, token);
+    await verifyJobToken(job, token, db);
 
     if (sessionId) {
       await markPaidFromStripeSession({

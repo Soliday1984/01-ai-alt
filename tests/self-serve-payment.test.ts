@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   hashToken,
+  issueJobRecoveryLink,
   markPaidFromStripeSession,
   sendJobAccessEmail,
   verifyJobToken,
@@ -40,7 +41,9 @@ function createJob(tokenHash: string): SelfServeJobRow {
 }
 
 function createDb(job: SelfServeJobRow) {
+  const recoveryTokens: Array<{ jobId: string; tokenHash: string; expiresAt: string }> = [];
   return {
+    recoveryTokens,
     prepare(query: string) {
       let values: unknown[] = [];
       return {
@@ -49,6 +52,16 @@ function createDb(job: SelfServeJobRow) {
           return this;
         },
         async first<T>() {
+          if (query.includes('FROM self_serve_job_recovery_tokens')) {
+            const [jobId, tokenHash, now] = values.map(String);
+            const match = recoveryTokens.find(
+              (candidate) =>
+                candidate.jobId === jobId &&
+                candidate.tokenHash === tokenHash &&
+                candidate.expiresAt > now
+            );
+            return (match ? { job_id: match.jobId } : null) as T | null;
+          }
           return job as T;
         },
         async all<T>() {
@@ -70,6 +83,26 @@ function createDb(job: SelfServeJobRow) {
             job.recovery_token_hash = String(values[0]);
             job.recovery_token_expires_at = String(values[1]);
             job.updated_at = String(values[2]);
+            return { meta: { changes: 1 } };
+          }
+
+          if (query.includes('DELETE FROM self_serve_job_recovery_tokens')) {
+            const [jobId, now] = values.map(String);
+            for (let index = recoveryTokens.length - 1; index >= 0; index -= 1) {
+              const candidate = recoveryTokens[index];
+              if (candidate.jobId === jobId && candidate.expiresAt <= now) {
+                recoveryTokens.splice(index, 1);
+              }
+            }
+            return { meta: { changes: 1 } };
+          }
+
+          if (query.includes('INSERT INTO self_serve_job_recovery_tokens')) {
+            recoveryTokens.push({
+              jobId: String(values[0]),
+              tokenHash: String(values[1]),
+              expiresAt: String(values[2]),
+            });
             return { meta: { changes: 1 } };
           }
 
@@ -145,7 +178,27 @@ test('verified Stripe payment unlocks the job and emails a short-lived recovery 
   assert.ok(link);
   const recoveryToken = new URL(link).searchParams.get('token');
   assert.ok(recoveryToken);
-  await assert.doesNotReject(() => verifyJobToken(job, recoveryToken));
+  await assert.doesNotReject(() => verifyJobToken(job, recoveryToken, db));
+});
+
+test('multiple recovery links remain valid until their expiry', async () => {
+  const job = createJob(await hashToken('original-access-token'));
+  const db = createDb(job);
+  const env = { NEXT_PUBLIC_SITE_URL: 'https://imageseofix.example' } as never;
+
+  const first = await issueJobRecoveryLink({ db, env, job });
+  const second = await issueJobRecoveryLink({ db, env, job });
+  const firstToken = new URL(first.url).searchParams.get('token');
+  const secondToken = new URL(second.url).searchParams.get('token');
+
+  assert.ok(firstToken);
+  assert.ok(secondToken);
+  assert.notEqual(firstToken, secondToken);
+  await assert.doesNotReject(() => verifyJobToken(job, firstToken, db));
+  await assert.doesNotReject(() => verifyJobToken(job, secondToken, db));
+
+  db.recoveryTokens[0].expiresAt = '2020-01-01T00:00:00.000Z';
+  await assert.rejects(() => verifyJobToken(job, firstToken, db), /Invalid job token/);
 });
 
 test('Cloudflare Email binding sends a secure recovery link without a third-party API key', async () => {

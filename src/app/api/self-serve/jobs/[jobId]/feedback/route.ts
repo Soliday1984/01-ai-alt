@@ -39,7 +39,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     const { db } = await getSelfServeBindings();
     const job = await getJob(db, jobId);
-    await verifyJobToken(job, token);
+    await verifyJobToken(job, token, db);
     if (job.payment_status !== 'paid') {
       throw new SelfServeError('Payment is required before reporting an import result.', 402);
     }

@@ -269,7 +269,35 @@ export async function hashToken(token: string) {
     .join('');
 }
 
-export async function verifyJobToken(job: SelfServeJobRow, token: string) {
+async function hasIssuedRecoveryToken(
+  db: D1DatabaseBinding | undefined,
+  jobId: string,
+  tokenHash: string
+) {
+  if (!db) {
+    return false;
+  }
+
+  const token = await db
+    .prepare(
+      `SELECT job_id
+       FROM self_serve_job_recovery_tokens
+       WHERE job_id = ?
+         AND token_hash = ?
+         AND expires_at > ?
+       LIMIT 1`
+    )
+    .bind(jobId, tokenHash, new Date().toISOString())
+    .first<{ job_id: string }>();
+
+  return Boolean(token);
+}
+
+export async function verifyJobToken(
+  job: SelfServeJobRow,
+  token: string,
+  db?: D1DatabaseBinding
+) {
   if (!token) {
     throw new SelfServeError('Missing job token.', 401);
   }
@@ -284,8 +312,9 @@ export async function verifyJobToken(job: SelfServeJobRow, token: string) {
     Number.isFinite(recoveryExpiresAt) &&
     recoveryExpiresAt > Date.now() &&
     timingSafeHexEqual(tokenHash, job.recovery_token_hash ?? '');
+  const hasIssuedToken = await hasIssuedRecoveryToken(db, job.id, tokenHash);
 
-  if (!hasOriginalToken && !hasRecoveryToken) {
+  if (!hasOriginalToken && !hasRecoveryToken && !hasIssuedToken) {
     throw new SelfServeError('Invalid job token.', 403);
   }
 }
@@ -453,6 +482,26 @@ export async function issueJobRecoveryLink(input: {
        WHERE id = ?`
     )
     .bind(tokenHash, expiresAt, now, input.job.id)
+    .run();
+
+  await input.db
+    .prepare(
+      `DELETE FROM self_serve_job_recovery_tokens
+       WHERE job_id = ? AND expires_at <= ?`
+    )
+    .bind(input.job.id, now)
+    .run();
+
+  await input.db
+    .prepare(
+      `INSERT INTO self_serve_job_recovery_tokens (
+        job_id,
+        token_hash,
+        expires_at,
+        created_at
+      ) VALUES (?, ?, ?, ?)`
+    )
+    .bind(input.job.id, tokenHash, expiresAt, now)
     .run();
 
   const url = new URL('/self-serve', publicSiteUrl(input.env));

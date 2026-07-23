@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     const token = readString(body?.token, 'Job token');
     const job = await getJob(db, jobId);
 
-    await verifyJobToken(job, token);
+    await verifyJobToken(job, token, db);
 
     if (job.payment_status === 'paid') {
       throw new SelfServeError(
