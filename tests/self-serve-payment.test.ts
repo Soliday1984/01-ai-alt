@@ -342,6 +342,103 @@ test('the internal promotion code is never sent for ordinary merchant checkout',
   assert.doesNotMatch(requestBody, /metadata%5Be2e%5D/);
 });
 
+test('an internal E2E promotion is applied only after Stripe confirms the same product scope', async (t) => {
+  const job = createJob(await hashToken('original-access-token'));
+  job.email = 'tester@example.com';
+  let requestBody = '';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    if (url.endsWith('/v1/prices/price_imageseofix')) {
+      return new Response(JSON.stringify({ product: 'prod_imageseofix' }), { status: 200 });
+    }
+    if (url.endsWith('/v1/promotion_codes/promo_internal_only')) {
+      return new Response(JSON.stringify({ active: true, coupon: 'coupon_imageseofix' }), {
+        status: 200,
+      });
+    }
+    if (url.endsWith('/v1/coupons/coupon_imageseofix')) {
+      return new Response(
+        JSON.stringify({ valid: true, applies_to: { products: ['prod_imageseofix'] } }),
+        { status: 200 }
+      );
+    }
+    if (url.endsWith('/v1/checkout/sessions')) {
+      requestBody = String(init?.body ?? '');
+      return new Response(
+        JSON.stringify({ id: 'cs_test_e2e', url: 'https://checkout.stripe.test/cs_test_e2e' }),
+        { status: 200 }
+      );
+    }
+    throw new Error(`Unexpected fetch: ${url}`);
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  await createCheckoutSession({
+    env: {
+      STRIPE_SECRET_KEY: 'sk_test_example',
+      STRIPE_STARTER_PRICE_ID: 'price_imageseofix',
+      IMAGESEOFIX_E2E_EMAIL: 'tester@example.com',
+      STRIPE_E2E_PROMOTION_CODE: 'promo_internal_only',
+      NEXT_PUBLIC_SITE_URL: 'https://imageseofix.example',
+    },
+    request: new Request('https://imageseofix.example/api/self-serve/checkout'),
+    job,
+    token: 'original-access-token',
+  });
+
+  assert.match(requestBody, /discounts%5B0%5D%5Bpromotion_code%5D=promo_internal_only/);
+  assert.match(requestBody, /metadata%5Be2e%5D=true/);
+});
+
+test('an account-wide internal promotion cannot create a zero-charge checkout', async (t) => {
+  const job = createJob(await hashToken('original-access-token'));
+  job.email = 'tester@example.com';
+  let checkoutRequested = false;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith('/v1/prices/price_imageseofix')) {
+      return new Response(JSON.stringify({ product: 'prod_imageseofix' }), { status: 200 });
+    }
+    if (url.endsWith('/v1/promotion_codes/promo_account_wide')) {
+      return new Response(JSON.stringify({ active: true, coupon: 'coupon_account_wide' }), {
+        status: 200,
+      });
+    }
+    if (url.endsWith('/v1/coupons/coupon_account_wide')) {
+      return new Response(JSON.stringify({ valid: true, applies_to: null }), { status: 200 });
+    }
+    if (url.endsWith('/v1/checkout/sessions')) {
+      checkoutRequested = true;
+    }
+    throw new Error(`Unexpected fetch: ${url}`);
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  await assert.rejects(
+    () =>
+      createCheckoutSession({
+        env: {
+          STRIPE_SECRET_KEY: 'sk_test_example',
+          STRIPE_STARTER_PRICE_ID: 'price_imageseofix',
+          IMAGESEOFIX_E2E_EMAIL: 'tester@example.com',
+          STRIPE_E2E_PROMOTION_CODE: 'promo_account_wide',
+          NEXT_PUBLIC_SITE_URL: 'https://imageseofix.example',
+        },
+        request: new Request('https://imageseofix.example/api/self-serve/checkout'),
+        job,
+        token: 'original-access-token',
+      }),
+    /not restricted/
+  );
+  assert.equal(checkoutRequested, false);
+});
+
 test('explicit Resend configuration remains supported during the Brevo migration', async (t) => {
   const job = createJob(await hashToken('original-access-token'));
   const originalFetch = globalThis.fetch;

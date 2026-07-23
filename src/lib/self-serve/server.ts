@@ -112,6 +112,22 @@ export type StripeCheckoutSession = {
   };
 };
 
+type StripePrice = {
+  product?: string | { id?: string } | null;
+};
+
+type StripePromotionCode = {
+  active?: boolean;
+  coupon?: string | { id?: string } | null;
+};
+
+type StripeCoupon = {
+  valid?: boolean;
+  applies_to?: {
+    products?: string[] | null;
+  } | null;
+};
+
 export type SelfServeFunnelEvent =
   | 'job_created'
   | 'checkout_started'
@@ -997,6 +1013,17 @@ async function parseStripeResponse(response: Response) {
   return payload;
 }
 
+async function retrieveStripeResource<T>(secret: string, path: string) {
+  const response = await fetch(`https://api.stripe.com/v1/${path}`, {
+    headers: {
+      Authorization: `Bearer ${secret}`,
+      'Stripe-Version': '2026-02-25.clover',
+    },
+  });
+
+  return (await parseStripeResponse(response)) as T;
+}
+
 function normalizedConfiguredEmail(value: string | undefined) {
   return value?.trim().toLowerCase() || '';
 }
@@ -1013,6 +1040,50 @@ function isInternalE2EJob(env: SelfServeEnv, job: SelfServeJobRow) {
       promotionCode &&
       job.email.trim().toLowerCase() === configuredEmail
   );
+}
+
+function configuredE2EPromotionCode(env: SelfServeEnv) {
+  return env.STRIPE_E2E_PROMOTION_CODE || process.env.STRIPE_E2E_PROMOTION_CODE || '';
+}
+
+async function assertInternalE2EPromotionScope(env: SelfServeEnv, secret: string) {
+  const promotionCodeId = configuredE2EPromotionCode(env);
+  const priceId = env.STRIPE_STARTER_PRICE_ID || process.env.STRIPE_STARTER_PRICE_ID;
+  if (!promotionCodeId || !priceId) {
+    throw new SelfServeConfigError(
+      'Internal E2E checkout requires a configured promotion code and Stripe price.'
+    );
+  }
+
+  const [price, promotionCode] = await Promise.all([
+    retrieveStripeResource<StripePrice>(secret, `prices/${encodeURIComponent(priceId)}`),
+    retrieveStripeResource<StripePromotionCode>(
+      secret,
+      `promotion_codes/${encodeURIComponent(promotionCodeId)}`
+    ),
+  ]);
+  const productId = typeof price.product === 'string' ? price.product : price.product?.id;
+  const couponId =
+    typeof promotionCode.coupon === 'string'
+      ? promotionCode.coupon
+      : promotionCode.coupon?.id;
+
+  if (!promotionCode.active || !productId || !couponId) {
+    throw new SelfServeConfigError('Internal E2E promotion configuration is invalid.');
+  }
+
+  const coupon = await retrieveStripeResource<StripeCoupon>(
+    secret,
+    `coupons/${encodeURIComponent(couponId)}`
+  );
+  const products = coupon.applies_to?.products ?? [];
+  if (!coupon.valid || products.length !== 1 || products[0] !== productId) {
+    throw new SelfServeConfigError(
+      'Internal E2E promotion is not restricted to the configured ImageSEOFix product.'
+    );
+  }
+
+  return promotionCodeId;
 }
 
 function isExpectedCheckoutAmount(input: {
@@ -1062,11 +1133,9 @@ export async function createCheckoutSession(input: {
   });
 
   if (isInternalE2EJob(input.env, input.job)) {
+    const promotionCodeId = await assertInternalE2EPromotionScope(input.env, secret);
     body.set('metadata[e2e]', 'true');
-    body.set(
-      'discounts[0][promotion_code]',
-      input.env.STRIPE_E2E_PROMOTION_CODE || process.env.STRIPE_E2E_PROMOTION_CODE || ''
-    );
+    body.set('discounts[0][promotion_code]', promotionCodeId);
   }
 
   const priceId = input.env.STRIPE_STARTER_PRICE_ID || process.env.STRIPE_STARTER_PRICE_ID;
