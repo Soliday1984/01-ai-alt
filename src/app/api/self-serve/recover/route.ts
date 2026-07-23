@@ -4,6 +4,7 @@ import {
   hasEmailDeliveryConfig,
   issueJobRecoveryLink,
   jsonError,
+  recordSelfServeEvent,
   requestIp,
   sendJobAccessEmail,
   SelfServeConfigError,
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
     const job = await getLatestJobByEmail(db, email);
     if (job) {
       const link = await issueJobRecoveryLink({ db, env, job });
+      await recordSelfServeEvent(db, job.id, 'recovery_link_issued');
       await sendJobAccessEmail({
         env,
         job,

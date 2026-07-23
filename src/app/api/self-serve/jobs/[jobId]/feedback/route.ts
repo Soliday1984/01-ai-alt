@@ -2,6 +2,7 @@ import {
   getJob,
   getSelfServeBindings,
   jsonError,
+  recordSelfServeEvent,
   saveImportFeedback,
   SelfServeError,
   verifyJobToken,
@@ -50,6 +51,7 @@ export async function POST(request: Request, context: RouteContext) {
       status as 'success' | 'issue' | 'not_imported',
       readFeedback(body.feedback)
     );
+    await recordSelfServeEvent(db, job.id, 'import_feedback_saved', { status });
 
     return new Response(null, {
       status: 204,

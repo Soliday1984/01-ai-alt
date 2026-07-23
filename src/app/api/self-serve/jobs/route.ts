@@ -8,6 +8,7 @@ import {
   insertJob,
   jsonError,
   putCsvObject,
+  recordSelfServeEvent,
   requestIp,
   SelfServeError,
   verifyTurnstileToken,
@@ -131,6 +132,10 @@ export async function POST(request: Request) {
       cleanedKey,
       tokenHash,
       stats: result.stats,
+    });
+    await recordSelfServeEvent(db, jobId, 'job_created', {
+      processedImageRows: result.stats.processedImageRows,
+      changedRows: result.stats.changedRows,
     });
 
     return Response.json(

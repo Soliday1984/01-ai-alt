@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  createCheckoutSession,
   hashToken,
+  isExpectedPaidCheckoutSession,
   issueJobRecoveryLink,
   markPaidFromStripeSession,
   sendJobAccessEmail,
@@ -42,8 +44,10 @@ function createJob(tokenHash: string): SelfServeJobRow {
 
 function createDb(job: SelfServeJobRow) {
   const recoveryTokens: Array<{ jobId: string; tokenHash: string; expiresAt: string }> = [];
+  const events: Array<{ jobId: string; name: string; data: string }> = [];
   return {
     recoveryTokens,
+    events,
     prepare(query: string) {
       let values: unknown[] = [];
       return {
@@ -102,6 +106,15 @@ function createDb(job: SelfServeJobRow) {
               jobId: String(values[0]),
               tokenHash: String(values[1]),
               expiresAt: String(values[2]),
+            });
+            return { meta: { changes: 1 } };
+          }
+
+          if (query.includes('INSERT INTO self_serve_events')) {
+            events.push({
+              jobId: String(values[1]),
+              name: String(values[2]),
+              data: String(values[3]),
             });
             return { meta: { changes: 1 } };
           }
@@ -167,6 +180,7 @@ test('verified Stripe payment unlocks the job and emails a short-lived recovery 
   assert.ok(job.paid_at);
   assert.ok(job.recovery_token_hash);
   assert.ok(job.recovery_token_expires_at);
+  assert.deepEqual(db.events.map((event) => event.name), ['payment_verified']);
   assert.equal(calls.length, 2);
 
   const email = JSON.parse(calls[1].body ?? '{}') as {
@@ -259,6 +273,73 @@ test('amount mismatch never unlocks a job or triggers delivery email', async (t)
   assert.equal(job.payment_status, 'unpaid');
   assert.equal(job.recovery_token_hash, null);
   assert.equal(calls, 1);
+});
+
+test('a zero-charge session is accepted only for the configured internal E2E job', async () => {
+  const job = createJob(await hashToken('original-access-token'));
+  job.email = 'tester@example.com';
+  const session = {
+    ...checkoutSession(0),
+    metadata: {
+      job_id: job.id,
+      product: 'imageseofix_self_serve_csv_v1',
+      e2e: 'true',
+    },
+    total_details: { amount_discount: 1900 },
+  };
+  const env = {
+    STRIPE_SECRET_KEY: 'sk_test_example',
+    IMAGESEOFIX_E2E_EMAIL: 'tester@example.com',
+    STRIPE_E2E_PROMOTION_CODE: 'promo_internal_only',
+  };
+
+  assert.equal(isExpectedPaidCheckoutSession({ env, job, session }), true);
+  assert.equal(
+    isExpectedPaidCheckoutSession({
+      env: { ...env, IMAGESEOFIX_E2E_EMAIL: 'other@example.com' },
+      job,
+      session,
+    }),
+    false
+  );
+  assert.equal(
+    isExpectedPaidCheckoutSession({
+      env,
+      job,
+      session: { ...session, metadata: { ...session.metadata, e2e: 'false' } },
+    }),
+    false
+  );
+});
+
+test('the internal promotion code is never sent for ordinary merchant checkout', async (t) => {
+  const job = createJob(await hashToken('original-access-token'));
+  let requestBody = '';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_input, init) => {
+    requestBody = String(init?.body ?? '');
+    return new Response(JSON.stringify({ id: 'cs_test_456', url: 'https://checkout.stripe.test/cs_test_456' }), {
+      status: 200,
+    });
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  await createCheckoutSession({
+    env: {
+      STRIPE_SECRET_KEY: 'sk_test_example',
+      IMAGESEOFIX_E2E_EMAIL: 'tester@example.com',
+      STRIPE_E2E_PROMOTION_CODE: 'promo_internal_only',
+      NEXT_PUBLIC_SITE_URL: 'https://imageseofix.example',
+    },
+    request: new Request('https://imageseofix.example/api/self-serve/checkout'),
+    job,
+    token: 'original-access-token',
+  });
+
+  assert.doesNotMatch(requestBody, /promotion_code/);
+  assert.doesNotMatch(requestBody, /metadata%5Be2e%5D/);
 });
 
 test('explicit Resend configuration remains supported during the Brevo migration', async (t) => {

@@ -4,6 +4,7 @@ import {
   jsonError,
   markPaidFromStripeSession,
   markJobDownloaded,
+  recordSelfServeEvent,
   SelfServeError,
   verifyJobToken,
 } from '@/lib/self-serve/server';
@@ -49,6 +50,7 @@ export async function GET(request: Request, context: RouteContext) {
     }
 
     await markJobDownloaded(db, job.id);
+    await recordSelfServeEvent(db, job.id, 'csv_downloaded');
 
     return new Response(object.body, {
       headers: {

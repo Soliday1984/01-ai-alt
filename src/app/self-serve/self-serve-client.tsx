@@ -78,6 +78,7 @@ type JobStatus = {
 
 const starterPrice = '$19';
 const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || '';
+const supportEmail = process.env.NEXT_PUBLIC_LEAD_EMAIL?.trim() || 'support@imageseofix.com';
 
 const steps = [
   'Export the full Products CSV from Shopify Admin.',
@@ -126,6 +127,7 @@ export function SelfServeClient() {
   const [importFeedback, setImportFeedback] = useState('');
   const [isReportingImport, setIsReportingImport] = useState(false);
   const [importReported, setImportReported] = useState(false);
+  const [copiedJobId, setCopiedJobId] = useState(false);
 
   const stats = jobStatus
     ? mergeStatsFromStatus(jobStatus)
@@ -362,6 +364,16 @@ export function SelfServeClient() {
       downloads: jobStatus.job.downloadCount + 1,
     });
     window.location.href = jobStatus.downloadUrl;
+  }
+
+  async function copyJobId() {
+    const jobId = jobStatus?.job.id || createdJob?.jobId;
+    if (!jobId || !navigator.clipboard) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(jobId);
+    setCopiedJobId(true);
   }
 
   async function reportImportFeedback() {
@@ -633,6 +645,20 @@ export function SelfServeClient() {
                 </a>
                 .
               </p>
+            ) : null}
+            {jobStatus?.job.id || createdJob?.jobId ? (
+              <div className="mt-4 flex flex-wrap items-center gap-2 text-xs leading-5 text-muted-foreground">
+                <span>Need help? Include Job ID</span>
+                <code className="rounded border bg-muted/30 px-1.5 py-0.5 text-foreground">
+                  {jobStatus?.job.id || createdJob?.jobId}
+                </code>
+                <Button type="button" size="sm" variant="outline" onClick={copyJobId}>
+                  {copiedJobId ? 'Copied' : 'Copy ID'}
+                </Button>
+                <a className="font-medium text-primary hover:underline" href={`mailto:${supportEmail}`}>
+                  Contact support
+                </a>
+              </div>
             ) : null}
             {jobStatus?.canDownload ? (
               <div className="mt-5 rounded-lg border bg-muted/30 p-4">

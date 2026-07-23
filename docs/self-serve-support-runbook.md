@@ -30,6 +30,68 @@ pnpm exec wrangler d1 execute imageseofix --remote --command "SELECT id, payment
 - duplicate payment: compare Stripe session IDs first. Refund through Stripe,
   then document the outcome in the support ticket; do not delete the D1 row.
 
+## Funnel and validation checks
+
+The server records only job-scoped operational events. It does not store CSV
+contents, job tokens, email addresses, or store URLs in the event table.
+
+```powershell
+pnpm exec wrangler d1 execute imageseofix --remote --command "SELECT event_name, COUNT(*) AS events FROM self_serve_events WHERE created_at >= datetime('now', '-7 days') GROUP BY event_name ORDER BY event_name;"
+```
+
+For an individual merchant journey, query by the Job ID only:
+
+```powershell
+pnpm exec wrangler d1 execute imageseofix --remote --command "SELECT event_name, event_data_json, created_at FROM self_serve_events WHERE job_id = 'job_example' ORDER BY created_at;"
+```
+
+The expected paid path is `job_created` -> `checkout_started` ->
+`payment_verified` -> `csv_downloaded` -> `import_feedback_saved`.
+
+## Internal zero-charge Stripe E2E
+
+Use this only for a controlled end-to-end check. It is not a public discount,
+does not create revenue, and is intentionally unavailable to ordinary users.
+
+1. In the relevant Stripe mode, create a 100% promotion code restricted to the
+   ImageSEOFix product, with one redemption and a short expiration.
+2. Set the exact internal tester mailbox and promotion code ID as Worker
+   secrets. Do not create GitHub variables for either value.
+
+```powershell
+pnpm exec wrangler secret put IMAGESEOFIX_E2E_EMAIL
+pnpm exec wrangler secret put STRIPE_E2E_PROMOTION_CODE
+```
+
+3. Run one job using exactly that mailbox. Stripe Checkout should show a zero
+   total, then the webhook, delivery email, secure link, CSV download, and
+   Shopify import preview must all complete.
+4. Delete the promotion code and clear both Worker secrets immediately after
+   the check. Keep the resulting job ID and Stripe event IDs in the private
+   validation record.
+
+The server accepts a zero-total session only when the configured mailbox,
+promotion-code configuration, E2E metadata, and a full $19 discount all match.
+Changing any one of these conditions prevents an unlock.
+
+## CSV retention
+
+Both the original and cleaned CSV are stored under the `self-serve/` prefix in
+the `imageseofix-uploads` R2 bucket. Configure a production R2 lifecycle rule
+to delete that prefix after 30 days once explicitly approved:
+
+```powershell
+pnpm exec wrangler r2 bucket lifecycle add imageseofix-uploads self-serve-expire self-serve/ --expire-days 30
+```
+
+Confirm first with:
+
+```powershell
+pnpm exec wrangler r2 bucket lifecycle list imageseofix-uploads
+```
+
+Do not claim automatic deletion in product copy until the live rule is listed.
+
 ## Email delivery configuration
 
 Payment receipts and secure recovery links are optional delivery aids; a paid
@@ -100,3 +162,5 @@ provider credentials in GitHub variables, repository files, logs, or chat.
 - Treat a job token as a password. Use the job ID for support lookup.
 - Before changing production state, preserve the original CSV and record the
   reason, operator, and Stripe session ID in the support system.
+- Support requests should include the Job ID only. Never ask users to send a
+  job token or their CSV by email.

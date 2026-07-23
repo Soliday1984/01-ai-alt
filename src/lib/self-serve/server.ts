@@ -31,6 +31,8 @@ type SelfServeEnv = Omit<CloudflareEnv, 'EMAIL'> & {
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   STRIPE_STARTER_PRICE_ID?: string;
+  IMAGESEOFIX_E2E_EMAIL?: string;
+  STRIPE_E2E_PROMOTION_CODE?: string;
   TURNSTILE_SECRET_KEY?: string;
   EMAIL_PROVIDER?: string;
   CLOUDFLARE_EMAIL_FROM?: string;
@@ -103,8 +105,20 @@ export type StripeCheckoutSession = {
   metadata?: {
     job_id?: string;
     product?: string;
+    e2e?: string;
+  };
+  total_details?: {
+    amount_discount?: number | null;
   };
 };
+
+export type SelfServeFunnelEvent =
+  | 'job_created'
+  | 'checkout_started'
+  | 'payment_verified'
+  | 'csv_downloaded'
+  | 'import_feedback_saved'
+  | 'recovery_link_issued';
 
 export class SelfServeError extends Error {
   status: number;
@@ -329,6 +343,41 @@ export async function putCsvObject(
       contentType: 'text/csv; charset=utf-8',
     },
   });
+}
+
+export async function recordSelfServeEvent(
+  db: D1DatabaseBinding,
+  jobId: string,
+  eventName: SelfServeFunnelEvent,
+  eventData: Record<string, string | number | boolean | null> = {}
+) {
+  try {
+    await db
+      .prepare(
+        `INSERT INTO self_serve_events (
+          id,
+          job_id,
+          event_name,
+          event_data_json,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?)`
+      )
+      .bind(
+        crypto.randomUUID(),
+        jobId,
+        eventName,
+        JSON.stringify(eventData),
+        new Date().toISOString()
+      )
+      .run();
+  } catch (error) {
+    // Analytics must never block a payment, recovery, or download.
+    console.error('Unable to record ImageSEOFix funnel event.', {
+      jobId,
+      eventName,
+      error: error instanceof Error ? error.message : 'unknown',
+    });
+  }
 }
 
 export async function insertJob(db: D1DatabaseBinding, input: CreateJobInput) {
@@ -948,6 +997,44 @@ async function parseStripeResponse(response: Response) {
   return payload;
 }
 
+function normalizedConfiguredEmail(value: string | undefined) {
+  return value?.trim().toLowerCase() || '';
+}
+
+function isInternalE2EJob(env: SelfServeEnv, job: SelfServeJobRow) {
+  const configuredEmail = normalizedConfiguredEmail(
+    env.IMAGESEOFIX_E2E_EMAIL || process.env.IMAGESEOFIX_E2E_EMAIL
+  );
+  const promotionCode =
+    env.STRIPE_E2E_PROMOTION_CODE || process.env.STRIPE_E2E_PROMOTION_CODE;
+
+  return Boolean(
+    configuredEmail &&
+      promotionCode &&
+      job.email.trim().toLowerCase() === configuredEmail
+  );
+}
+
+function isExpectedCheckoutAmount(input: {
+  env: SelfServeEnv;
+  job: SelfServeJobRow;
+  session: StripeCheckoutSession;
+  paymentRequired: boolean;
+}) {
+  const { env, job, session, paymentRequired } = input;
+  if (session.amount_total === 1900) {
+    return true;
+  }
+
+  return (
+    isInternalE2EJob(env, job) &&
+    session.metadata?.e2e === 'true' &&
+    session.amount_total === 0 &&
+    session.total_details?.amount_discount === 1900 &&
+    (!paymentRequired || session.payment_status === 'paid')
+  );
+}
+
 export async function createCheckoutSession(input: {
   env: SelfServeEnv;
   request: Request;
@@ -973,6 +1060,14 @@ export async function createCheckoutSession(input: {
     'metadata[job_id]': input.job.id,
     'metadata[product]': 'imageseofix_self_serve_csv_v1',
   });
+
+  if (isInternalE2EJob(input.env, input.job)) {
+    body.set('metadata[e2e]', 'true');
+    body.set(
+      'discounts[0][promotion_code]',
+      input.env.STRIPE_E2E_PROMOTION_CODE || process.env.STRIPE_E2E_PROMOTION_CODE || ''
+    );
+  }
 
   const priceId = input.env.STRIPE_STARTER_PRICE_ID || process.env.STRIPE_STARTER_PRICE_ID;
   if (priceId) {
@@ -1041,7 +1136,12 @@ export function isExpectedPaidCheckoutSession(input: {
     session.metadata?.product === 'imageseofix_self_serve_csv_v1' &&
     session.mode === 'payment' &&
     session.payment_status === 'paid' &&
-    session.amount_total === 1900 &&
+    isExpectedCheckoutAmount({
+      env: input.env,
+      job,
+      session,
+      paymentRequired: true,
+    }) &&
     session.currency?.toLowerCase() === 'usd' &&
     session.livemode === stripeLivemodeFromSecret(input.env)
   );
@@ -1061,7 +1161,12 @@ export function isReusableCheckoutSession(input: {
     session.metadata?.job_id === job.id &&
     session.metadata?.product === 'imageseofix_self_serve_csv_v1' &&
     session.mode === 'payment' &&
-    session.amount_total === 1900 &&
+    isExpectedCheckoutAmount({
+      env: input.env,
+      job,
+      session,
+      paymentRequired: false,
+    }) &&
     session.currency?.toLowerCase() === 'usd' &&
     session.livemode === stripeLivemodeFromSecret(input.env)
   );
@@ -1088,6 +1193,10 @@ export async function markPaidFromStripeSession(input: {
   ) {
     const marked = await markJobPaid(input.db, input.job.id, session.id);
     if (marked) {
+      await recordSelfServeEvent(input.db, input.job.id, 'payment_verified', {
+        amountTotal: session.amount_total ?? null,
+        e2e: session.metadata?.e2e === 'true',
+      });
       console.log(
         JSON.stringify({
           source: 'imageseofix-event',

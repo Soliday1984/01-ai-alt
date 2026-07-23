@@ -5,6 +5,7 @@ import {
   getSelfServeBindings,
   isReusableCheckoutSession,
   jsonError,
+  recordSelfServeEvent,
   retrieveCheckoutSession,
   SelfServeError,
   updateCheckoutSession,
@@ -67,6 +68,13 @@ export async function POST(request: Request) {
     });
 
     await updateCheckoutSession(db, job.id, session.id);
+    await recordSelfServeEvent(db, job.id, 'checkout_started', {
+      internalE2E: Boolean(
+        env.IMAGESEOFIX_E2E_EMAIL &&
+          env.STRIPE_E2E_PROMOTION_CODE &&
+          job.email.trim().toLowerCase() === env.IMAGESEOFIX_E2E_EMAIL.trim().toLowerCase()
+      ),
+    });
 
     return Response.json(
       {
