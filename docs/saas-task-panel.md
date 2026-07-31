@@ -16,7 +16,7 @@
 
 | 产品 | 状态 | 目标市场 | 核心关键词 | 当前阶段 | 本周目标 | 风险等级 |
 | --- | --- | --- | --- | --- | --- | --- |
-| ImageSEOFix | Active | Shopify/ecommerce SEO | shopify alt text generator | Cloudflare production；SEO/首单验证 | 核心页面独立化、重新收录、首批外链 | Medium |
+| ImageSEOFix | Active | Shopify/ecommerce SEO | shopify alt text generator | Gate B 生产部署与抽检已完成；进入 Gate C 分发与 Gate D 首单验证 | 完成 GSC URL Inspection/Request indexing；按素材包做人工分发；获取 3 个独立试用与 1 笔非零付款 | Medium |
 | LLMReadyCheck | Active | AI SEO / technical SEO | llms.txt checker, ai crawler visibility checker | GitHub + Vercel production 已上线 | GSC 提交、Vercel 账单保护、观察收录 | Medium |
 | Shopify Schema Checker | Analysis | Shopify/ecommerce SEO | shopify schema checker, shopify structured data checker | 已并入 ImageSEOFix，子页面已开发 | 上线后观察 GSC query、工具使用和邮箱/导出意向 | Medium |
 | ExtensionRiskCheck | Candidate | Browser extension security | chrome extension security scanner | GitHub + Vercel production 已上线 | 补 GSC、账单保护、观察工具使用和导出意向 | Medium |

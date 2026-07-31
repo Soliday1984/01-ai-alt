@@ -74,10 +74,12 @@
 
 前置条件：Gate A 全部完成。通过条件：生产版本抽检通过，三个核心 URL 已重新提交，并按时记录 GSC 结果。
 
-- [ ] `SEO-B01` 取得生产部署确认并部署修复版本。
+- [x] `SEO-B01` 取得生产部署确认并部署修复版本。
   - 完成定义：部署成功，记录 commit SHA、GitHub Actions/Cloudflare deployment URL 和时间。
-- [ ] `SEO-B02` 生产环境 SEO 抽检。
+  - 证据：canonical remote `main` commit `da3b20f50a836881fb4af90781513657982fe02f`；GitHub Actions 成功运行 [30624329650](https://github.com/Soliday1984/01-ai-alt/actions/runs/30624329650)；检查时间 2026-07-31。
+- [x] `SEO-B02` 生产环境 SEO 抽检。
   - 完成定义：三个核心页面均返回 200，TDH/正文互不重复，canonical、robots、sitemap、内链正确。
+  - 证据：2026-07-31 生产抽检 `https://imageseofix.com/`、`/self-serve`、`/shopify-image-seo-checker`、`/sitemap.xml` 均返回 200；首页和 `/self-serve` 使用 `/self-serve-icon.svg`；核心页面保留独立 H1、FAQ、WebApplication 结构化数据和上下文内链。
 - [ ] `SEO-B03` 使用 GSC URL Inspection 检查三个核心 URL 的 live page。
   - 完成定义：记录 live test 结果；没有 robots、canonical、渲染或服务器错误。
 - [ ] `SEO-B04` 对三个核心 URL 执行 Request indexing。
@@ -94,8 +96,9 @@
 - [x] `SEO-C01` 补充 `gefei-saas-workflow` 的外链与分发 reference。
   - 完成定义：包含安全外链原则、渠道优先级、深链策略、锚文本、提交记录、复查指标和垃圾链接红线；skill 校验通过。
   - 证据：`C:\Users\Administrator\.codex\skills\gefei-saas-workflow\references\backlink-distribution.md`；`quick_validate.py` 通过。
-- [ ] `SEO-C02` 准备统一发布素材包。
+- [x] `SEO-C02` 准备统一发布素材包。
   - 完成定义：一句话定位、100 字介绍、300 字介绍、logo/screenshot、免费工具 URL、三个深链、创始人简介、隐私说明。
+  - 证据：`docs/imageseofix-distribution-kit.md`。
 - [ ] `SEO-C03` 发布一个真实 Shopify CSV alt text 修复案例。
   - 完成定义：包含问题、处理前后示例、修改行数、店主如何导入、限制和结果；不泄露商家隐私。
 - [ ] `SEO-C04` 完善 GitHub 外链。
