@@ -78,6 +78,8 @@ jobs:
           set -euo pipefail
           URL="${{ steps.deploy.outputs.url }}"
           curl -fsS "$URL/" > /dev/null
+          curl -fsS "$URL/self-serve" > /dev/null
+          curl -fsS "$URL/self-serve-icon.svg?v=1" > /dev/null
           curl -fsS "$URL/robots.txt" > /dev/null
           curl -fsS "$URL/sitemap.xml" > /dev/null
           API_STATUS="$(curl -sS -o /dev/null -w '%{http_code}' "$URL/api/ping")"
@@ -95,19 +97,14 @@ jobs:
             echo "Expected scanner user-agent to return 403, got $SCANNER_STATUS" >&2
             exit 1
           fi
-          SCAN_RESPONSE="$(curl -fsS \
+          BLOCKED_STORE_STATUS="$(curl -sS -o /dev/null -w '%{http_code}' \
             -H 'content-type: application/json' \
-            -d '{"storeUrl":"https://allbirds.com"}' \
+            -d '{"storeUrl":"http://127.0.0.1"}' \
             "$URL/store-scan")"
-          node -e "
-            const data = JSON.parse(process.argv[1]);
-            if (!data.scannedProducts || data.scannedProducts > 5) {
-              throw new Error('Expected 1-5 scanned products');
-            }
-            if (!Array.isArray(data.rows) || data.rows.length === 0) {
-              throw new Error('Expected real scan rows');
-            }
-          " "$SCAN_RESPONSE"
+          if [ "$BLOCKED_STORE_STATUS" != "400" ]; then
+            echo "Expected a blocked private store scan to return 400, got $BLOCKED_STORE_STATUS" >&2
+            exit 1
+          fi
           EVENT_STATUS="$(curl -sS -o /dev/null -w '%{http_code}' \
             -H 'content-type: application/json' \
             -d '{"event":"smoke_test","payload":{"surface":"worker"}}' \
