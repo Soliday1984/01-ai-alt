@@ -12,6 +12,14 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/self-serve',
   },
+  icons: {
+    icon: [
+      {
+        url: '/self-serve-icon.svg?v=1',
+        type: 'image/svg+xml',
+      },
+    ],
+  },
 };
 
 export default function SelfServePage() {

@@ -1,6 +1,6 @@
 # SaaS Matrix Task Panel
 
-更新时间：2026-05-20
+更新时间：2026-07-31
 
 目标：用矩阵方式并行验证 2-3 个出海工具站/SaaS。先安全上线、收录验证、流量验证，再接 Stripe 收费。每个产品都必须有明确关键词、可交付工具、页面结构、风控边界和复盘指标。
 
@@ -16,7 +16,7 @@
 
 | 产品 | 状态 | 目标市场 | 核心关键词 | 当前阶段 | 本周目标 | 风险等级 |
 | --- | --- | --- | --- | --- | --- | --- |
-| ImageSEOFix | Active | Shopify/ecommerce SEO | shopify alt text generator | GitHub + Vercel production 已上线 | 手动开启 Spend Management/WAF，提交 GSC | Medium |
+| ImageSEOFix | Active | Shopify/ecommerce SEO | shopify alt text generator | Cloudflare production；SEO/首单验证 | 核心页面独立化、重新收录、首批外链 | Medium |
 | LLMReadyCheck | Active | AI SEO / technical SEO | llms.txt checker, ai crawler visibility checker | GitHub + Vercel production 已上线 | GSC 提交、Vercel 账单保护、观察收录 | Medium |
 | Shopify Schema Checker | Analysis | Shopify/ecommerce SEO | shopify schema checker, shopify structured data checker | 已并入 ImageSEOFix，子页面已开发 | 上线后观察 GSC query、工具使用和邮箱/导出意向 | Medium |
 | ExtensionRiskCheck | Candidate | Browser extension security | chrome extension security scanner | GitHub + Vercel production 已上线 | 补 GSC、账单保护、观察工具使用和导出意向 | Medium |
@@ -24,6 +24,10 @@
 ## ImageSEOFix
 
 定位：Shopify image SEO checker / alt text generator，先用 CSV-first 工具验证搜索需求和付费意向。
+
+当前专项执行清单：`docs/imageseofix-seo-growth-checklist.md`
+
+执行规则：以专项清单为 ImageSEOFix 当前增长阶段的单一任务入口；只有完成定义和证据都满足时才勾选。当前优先级是核心关键词页面独立化、重新收录、真实外链和第一笔外部付款，不继续扩展新功能。
 
 ### 已完成
 

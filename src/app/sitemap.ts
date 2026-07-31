@@ -19,8 +19,7 @@ const routes = [
 export default function sitemap(): MetadataRoute.Sitemap {
   return routes.map((route) => ({
     url: `${baseUrl}${route}`,
-    lastModified: new Date(),
     changeFrequency: route === '' ? 'weekly' : 'monthly',
-    priority: route === '' ? 1 : 0.8,
+    priority: route === '' ? 1 : route.startsWith('/shopify-') || route.startsWith('/bulk-') ? 0.9 : 0.7,
   }));
 }

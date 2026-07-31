@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ImageSEOFix self-serve CSV cleanup">
+  <rect width="64" height="64" rx="14" fill="#079455"/>
+  <rect x="13" y="14" width="38" height="36" rx="6" fill="#ffffff"/>
+  <path d="M20 37.5l7-7 5 5 5-6 7 8" fill="none" stroke="#079455" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5"/>
+  <circle cx="25" cy="24" r="3" fill="#079455"/>
+  <path d="M20 44h24" stroke="#c7ead8" stroke-linecap="round" stroke-width="3"/>
+  <path d="M20 49h15" stroke="#c7ead8" stroke-linecap="round" stroke-width="3"/>
+  <circle cx="47" cy="46" r="10" fill="#079455"/>
+  <path d="M42.5 46l3 3 5.5-6" fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.8"/>
+</svg>
