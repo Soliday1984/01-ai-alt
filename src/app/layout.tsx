@@ -30,6 +30,14 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  icons: {
+    icon: [
+      {
+        url: '/self-serve-icon.svg',
+        type: 'image/svg+xml',
+      },
+    ],
+  },
 };
 
 export const viewport: Viewport = {
